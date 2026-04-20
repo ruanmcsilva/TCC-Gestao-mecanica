@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=gestao_mecanica
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+
+  backend:
+    build: ./gestaoMecanicaBack-main
+    command: sh -c "pip install django-rest-passwordreset==1.5.0 && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./gestaoMecanicaBack-main:/app
+      - ./media:/app/media
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build: ./gestaoMecanicaFront-main
+    command: npm run dev -- --host 0.0.0.0
+    volumes:
+      - ./gestaoMecanicaFront-main:/app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    environment:
+      - VITE_API_URL=http://localhost:8000
+
+volumes:
+  postgres_data:

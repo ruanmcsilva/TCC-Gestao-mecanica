@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "Gestão Mecânica",
+    "slug": "gestao-mecanica",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/src/img/icon.png",
+    "scheme": "gestao-mecanica",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "entryPoint": "./App.tsx",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/src/img/fundo.jpeg",
+        "backgroundImage": "./assets/src/img/fundo.jpeg",
+        "monochromeImage": "./assets/src/img/fundo.jpeg"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff",
+          "dark": {
+            "backgroundColor": "#000000"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
