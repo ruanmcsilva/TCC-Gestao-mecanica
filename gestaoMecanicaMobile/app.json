@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Gestão Mecânica",
-    "slug": "gestao-mecanica",
+    "name": "gestaoMecanicaMobile",
+    "slug": "gestaoMecanicaMobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/src/img/icon.png",

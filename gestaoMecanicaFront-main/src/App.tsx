@@ -12,6 +12,7 @@ import ServiceDetailsPage from './pages/ServiceDetailsPage';
 import PartPage from './pages/PartPage';
 import ReportsPage from './pages/ReportsPage';
 import ClientHistoryPage from './pages/ClientHistoryPage';
+import SolicitacoesScreen from './components/SolicitacoesScreen';
 
 
 import Layout from './components/Layout';
@@ -48,6 +49,7 @@ function App() {
           <Route path="/pecas" element={<PartPage />} />
           <Route path="/relatorios" element={<ReportsPage />} />
           <Route path="/clientes/:id/historico" element={<ClientHistoryPage />} />
+          <Route path="/solicitacoes" element={<SolicitacoesScreen />} />
         </Routes>
       </Layout>
     );

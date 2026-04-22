@@ -1,4 +1,3 @@
-# loja/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
@@ -7,7 +6,8 @@ from .views import (
     CustomTokenObtainPairView, RegisterView, FotoServicoViewSet, 
     get_sessao, financial_report, services_in_progress_count, 
     low_stock_parts_count, client_history, consulta_api_externa,
-    solicitar_criacao_conta # IMPORTANTE: Adicione o import da nova view
+    contar_convites_pendentes, SolicitacaoAcessoView,
+    AutorizarAcessoView, listar_convites,
 )
 
 router = DefaultRouter()
@@ -22,23 +22,21 @@ router.register(r'movimentacoes', MovimentacaoEstoqueViewSet)
 router.register(r'fotos', FotoServicoViewSet)
 
 urlpatterns = [
-    # Rotas de Autenticação e Registro
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('register/', RegisterView.as_view({'post': 'create'}), name='auth_register'),
     path('sessao/', get_sessao, name='sessao'),
     
-    # NOVO: Rota para o modal de Criar Conta (Entre em contato)
-    path('solicitar-conta/', solicitar_criacao_conta, name='solicitar_conta'),
-    
-    # Relatórios e Dashboard
     path('relatorio-financeiro/', financial_report, name='financial_report'),
     path('dashboard/services-in-progress/', services_in_progress_count, name='services_in_progress_count'),
     path('dashboard/low-stock-parts/', low_stock_parts_count, name='low_stock_parts_count'),
     
-    # Histórico e Consultas Externas
     path('clientes/<int:pk>/historico/', client_history, name='client_history'),
     path('consulta/<str:tipo>/<str:valor>/', consulta_api_externa, name='consulta_externa'),
     
-    # Inclui todas as rotas do roteador (CRUDs)
+    path('convites/pendentes/contagem/', contar_convites_pendentes),
+    path('convites/lista/', listar_convites, name='listar-convites'),
+    path('autorizar-acesso/<int:pk>/', AutorizarAcessoView.as_view(), name='autorizar-acesso'),
+    path('solicitar-acesso/', SolicitacaoAcessoView.as_view(), name='solicitar-acesso'),
+    
     path('', include(router.urls)),
 ]

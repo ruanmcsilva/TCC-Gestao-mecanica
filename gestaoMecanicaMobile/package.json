@@ -1,5 +1,5 @@
 {
-  "name": "gestao-mecanica-mobile",
+  "name": "gestaoMecanicaMobile",
   "main": "expo/AppEntry.js",
   "version": "1.0.0",
   "scripts": {

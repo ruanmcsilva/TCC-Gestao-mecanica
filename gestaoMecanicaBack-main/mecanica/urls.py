@@ -4,6 +4,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework_simplejwt.views import TokenRefreshView
+from loja.views import SolicitacaoAcessoView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -16,6 +17,7 @@ urlpatterns = [
     
     # RECURSO DE SENHA: Rota padrão para o reset de senha
     path('api/v1/password_reset/', include('django_rest_passwordreset.urls', namespace='password_reset')),
+    path('api/v1/solicitar-acesso/', SolicitacaoAcessoView.as_view(), name='solicitar-acesso'),
 ]
 
 if settings.DEBUG:

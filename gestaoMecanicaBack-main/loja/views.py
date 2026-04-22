@@ -1,29 +1,25 @@
-# loja/views.py completo e corrigido para bater com seu urls.py
-from rest_framework import viewsets, status, filters, serializers
+from rest_framework import viewsets, status, filters
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth.models import User
-from django.db import transaction
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination
-import requests
-from django_filters.rest_framework import DjangoFilterBackend
 from django.core.mail import send_mail
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.template.loader import render_to_string
 from weasyprint import HTML
-from django.db.models import Sum
-from decimal import Decimal
+from django.shortcuts import get_object_or_404
 from django_rest_passwordreset.signals import reset_password_token_created
 from django.dispatch import receiver
+from rest_framework.views import APIView
 
 from .models import (
     Fornecedor, GrupoPeca, Peca, Cliente, Moto, Servico, 
-    ItemServicoPeca, MovimentacaoEstoque, FotoServico
+    ItemServicoPeca, MovimentacaoEstoque, FotoServico, Convite
 )
 from .serializers import (
     FornecedorSerializer, GrupoPecaSerializer, PecaSerializer, ClienteSerializer, 
@@ -36,7 +32,7 @@ from .serializers import (
 class CustomTokenObtainPairView(TokenObtainPairView):
     pass
 
-class RegisterView(viewsets.ViewSet): # ESSA ERA A CLASSE QUE FALTAVA
+class RegisterView(viewsets.ViewSet):
     permission_classes = [AllowAny]
     serializer_class = UserSerializer
 
@@ -57,26 +53,88 @@ class RegisterView(viewsets.ViewSet): # ESSA ERA A CLASSE QUE FALTAVA
             "token": token_serializer.validated_data
         }, status=status.HTTP_201_CREATED)
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def solicitar_criacao_conta(request):
-    email_usuario = request.data.get('email')
-    if not email_usuario:
-        return Response({'erro': 'E-mail obrigatório.'}, status=400)
-    send_mail(
-        subject='Nova Solicitação de Conta - Gestão Mecânica',
-        message=f'O usuário {email_usuario} solicitou acesso.',
-        from_email=settings.DEFAULT_FROM_EMAIL,
-        recipient_list=['ruanmcs2@gmail.com'],
-    )
-    return Response({'message': 'Solicitação enviada!'})
+# --- Fluxo de Convites e Solicitações ---
+
+class SolicitacaoAcessoView(APIView):
+    """ Chamada pelo modal 'Criar Conta' no Login """
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        email_cliente = request.data.get('email')
+        if not email_cliente:
+            return Response({"error": "E-mail é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Salva o convite como pendente no banco
+        convite, created = Convite.objects.get_or_create(email=email_cliente)
+
+        assunto = f"Solicitação de Acesso: {email_cliente}"
+        mensagem = (
+            f"Olá Administrador,\n\n"
+            f"O usuário {email_cliente} solicitou a criação de uma conta no sistema Gestão Mecânica.\n\n"
+            f"Acesse o painel para liberar o acesso."
+        )
+        
+        try:
+            send_mail(
+                subject=assunto,
+                message=mensagem,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=['ruanmcs2@gmail.com'],
+                fail_silently=False,
+            )
+            return Response({"message": "Solicitação enviada com sucesso"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": "Falha ao enviar e-mail informativo"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class AutorizarAcessoView(APIView):
+    """ Chamada pelo ADM na tela de Solicitações """
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def post(self, request, pk):
+        convite = get_object_or_404(Convite, pk=pk)
+        convite.autorizado = True
+        convite.save()
+
+        link_cadastro = f"http://localhost:5173/finalizar-cadastro?token={convite.token}&email={convite.email}"
+
+        try:
+            send_mail(
+                "Acesso Autorizado! - Gestão Mecânica",
+                f"Olá! Seu acesso foi liberado. Clique no link para criar sua conta: {link_cadastro}",
+                settings.EMAIL_HOST_USER,
+                [convite.email],
+                fail_silently=False,
+            )
+            return Response({"message": "Convite enviado com sucesso!"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": "Erro ao enviar e-mail de autorização"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def contar_convites_pendentes(request):
+    """ Alimenta o badge (exclamação) no Header do Layout """
+    quantidade = Convite.objects.filter(autorizado=False).count()
+    return Response({"pendentes": quantidade})
+
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def listar_convites(request):
+    """ Alimenta a tabela na tela de Solicitações """
+    convites = Convite.objects.all().order_by('-criado_em')
+    data = [{
+        "id": c.id, 
+        "email": c.email, 
+        "autorizado": c.autorizado, 
+        "criado_em": c.criado_em
+    } for c in convites]
+    return Response(data)
+
+# --- Utilitários e Sessão ---
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_sessao(request):
     return Response({'id': request.user.id, 'username': request.user.username, 'email': request.user.email})
-
-# --- Signal de Recuperação de Senha ---
 
 @receiver(reset_password_token_created)
 def password_reset_token_created(sender, instance, reset_password_token, *args, **kwargs):
@@ -88,7 +146,7 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
         recipient_list=[reset_password_token.user.email]
     )
 
-# --- ViewSets para CRUD (Necessários para loja/urls.py) ---
+# --- ViewSets para CRUD ---
 
 class StandardPagination(PageNumberPagination):
     page_size = 10
@@ -132,7 +190,7 @@ class MovimentacaoEstoqueViewSet(viewsets.ModelViewSet):
 class FotoServicoViewSet(viewsets.ModelViewSet):
     queryset = FotoServico.objects.all(); serializer_class = FotoServicoSerializer; permission_classes = [IsAuthenticated]
 
-# --- Dashboard e Histórico ---
+# --- Relatórios ---
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -161,5 +219,4 @@ def client_history(request, pk=None):
 
 @require_http_methods(["GET"])
 def consulta_api_externa(request, tipo, valor):
-    # Mock básico para não dar erro
     return JsonResponse({'sucesso': True, 'dados': {}, 'aviso': 'Simulado'})

@@ -1,9 +1,8 @@
 # loja/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 from decimal import Decimal
-
+import uuid
 
 class Fornecedor(models.Model):
     nome = models.CharField(max_length=255)
@@ -33,6 +32,14 @@ class Peca(models.Model):
 
     def __str__(self):
         return self.nome
+class Convite(models.Model):
+    email = models.EmailField(unique=True)
+    token = models.UUIDField(default=uuid.uuid4, unique=True)
+    autorizado = models.BooleanField(default=False)
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.email} - {'Autorizado' if self.autorizado else 'Pendente'}"
 
 class Cliente(models.Model):
     nome = models.CharField(max_length=255)
