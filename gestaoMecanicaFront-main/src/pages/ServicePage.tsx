@@ -3,368 +3,277 @@ import api from '../api/api';
 import { useNavigate, Link } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 
+// Interfaces mantidas...
 interface ServiceData {
   id: number;
   cliente: number;
   moto: number;
   data_servico: string;
   observacoes?: string;
-  pecas: number[];
   kilometragem: number;
   descricao: string;
   status: string;
 }
-
-interface ClienteData {
-  id: number;
-  nome: string;
-}
-
-interface MotoData {
-  id: number;
-  placa: string;
-  modelo: string;
-}
-
-interface FormErrors {
-  cliente?: string;
-  moto?: string;
-  data_servico?: string;
-  descricao?: string;
-  kilometragem?: string;
-  observacoes?: string;
-}
+interface ClienteData { id: number; nome: string; }
+interface MotoData { id: number; placa: string; modelo: string; }
 
 const ServicePage: React.FC = () => {
   const [services, setServices] = useState<ServiceData[]>([]);
   const [clients, setClients] = useState<ClienteData[]>([]);
   const [motos, setMotos] = useState<MotoData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [newService, setNewService] = useState<Omit<ServiceData, 'id' | 'pecas'>>({
-    cliente: 0,
-    moto: 0,
-    data_servico: '',
-    observacoes: '',
-    kilometragem: 0,
-    descricao: '',
+  const [isFormVisible, setIsFormVisible] = useState<boolean>(false);
+  const [newService, setNewService] = useState<Omit<ServiceData, 'id'>>({
+    cliente: 0, moto: 0, data_servico: '', observacoes: '', kilometragem: 0, descricao: '', status: 'PENDENTE'
   });
-  const navigate = useNavigate();
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const { showNotification } = useNotification();
 
-  // NOVO: Estados para paginação
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('');
+
+  // NOVOS ESTADOS PARA PAGINAÇÃO
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [count, setCount] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [inputPage, setInputPage] = useState<string>('1');
+
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [previousPageUrl, setPreviousPageUrl] = useState<string | null>(null);
 
-  const fetchData = useCallback(async (page: number, search?: string, statusFilter?: string) => {
+  const navigate = useNavigate();
+  const { showNotification } = useNotification();
+
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const params: { page: number; search?: string; status?: string } = { page: page };
-      if (search) params.search = search;
-      if (statusFilter) params.status = statusFilter;
+      const params: any = {
+        page: currentPage,
+        search: searchTerm || undefined,
+        status: selectedStatusFilter || undefined,
+        exclude_balcao: 'true'
+      };
 
-      const [servicesResponse, clientsResponse, motosResponse] = await Promise.all([
+      const [resServ, resCli, resMoto] = await Promise.all([
         api.get('/servicos/', { params }),
-        api.get('/clientes/', { params: { page_size: 100 } }), // NÃO paginar clientes para o select
-        api.get('/motos/', { params: { page_size: 100 } }), // NÃO paginar motos para o select
+        api.get('/clientes/', { params: { page_size: 1000 } }),
+        api.get('/motos/', { params: { page_size: 1000 } }),
       ]);
-      setServices(servicesResponse.data.results);
-      setClients(clientsResponse.data.results);
-      setMotos(motosResponse.data.results);
-      setCount(servicesResponse.data.count);
-      setNextPageUrl(servicesResponse.data.next);
-      setPreviousPageUrl(servicesResponse.data.previous);
+
+      setServices(resServ.data.results);
+      setClients(resCli.data.results);
+      setMotos(resMoto.data.results);
+      setNextPageUrl(resServ.data.next);
+      setPreviousPageUrl(resServ.data.previous);
+
+      // Cálculo do total de páginas
+      const total = Math.ceil(resServ.data.count / 10);
+      setTotalPages(total || 1);
+      setInputPage(currentPage.toString());
+
     } catch (err: any) {
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        navigate('/login');
-        showNotification('Sessão expirada. Faça login novamente.', 'error');
-      } else {
-        showNotification('Erro ao carregar dados. Tente novamente mais tarde.', 'error');
-        console.error('Erro ao buscar dados:', err);
-      }
+      if (err.response?.status === 401) navigate('/login');
     } finally {
       setLoading(false);
     }
-  }, [navigate, showNotification]);
+  }, [currentPage, searchTerm, selectedStatusFilter, navigate]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      fetchData(currentPage, searchTerm, selectedStatusFilter);
-    }, 500);
+      fetchData();
+    }, 200);
+    return () => clearTimeout(handler);
+  }, [fetchData]);
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [currentPage, searchTerm, selectedStatusFilter, fetchData]);
-
-  const getClientName = (clientId: number) => {
-    const client = clients.find(c => c.id === clientId);
-    return client ? client.nome : 'Cliente não encontrado';
+  // Função para pular direto para uma página
+  const handleJumpPage = () => {
+    const pageNum = parseInt(inputPage);
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      setCurrentPage(pageNum);
+    } else {
+      setInputPage(currentPage.toString());
+      showNotification(`Página inválida. Total disponível: ${totalPages}`, 'info');
+    }
   };
 
-  const getMotoInfo = (motoId: number) => {
-    const moto = motos.find(m => m.id === motoId);
-    return moto ? `${moto.modelo} (${moto.placa})` : 'Moto não encontrada';
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedStatusFilter(e.target.value);
+    setCurrentPage(1);
   };
 
-  const validateForm = (serviceData: Omit<ServiceData, 'id' | 'pecas'>): FormErrors => {
-    const errors: FormErrors = {};
-    if (serviceData.cliente === 0) {
-      errors.cliente = 'Selecione um cliente.';
-    }
-    if (serviceData.moto === 0) {
-      errors.moto = 'Selecione uma moto.';
-    }
-    if (!serviceData.data_servico) {
-      errors.data_servico = 'Data de Início é obrigatória.';
-    }
-    if (!serviceData.descricao) {
-      errors.descricao = 'Descrição é obrigatória.';
-    }
-    if (!serviceData.kilometragem || serviceData.kilometragem <= 0) {
-      errors.kilometragem = 'Quilometragem inválida.';
-    }
-    return errors;
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormErrors(prev => ({ ...prev, [name]: undefined }));
-    
     const finalValue = (name === 'kilometragem' || name === 'cliente' || name === 'moto') ? Number(value) : value;
     setNewService({ ...newService, [name]: finalValue });
   };
 
   const handleAddService = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors = validateForm(newService);
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      showNotification('Preencha todos os campos obrigatórios.', 'error');
-      return;
-    }
-    setFormErrors({}); 
-    
     try {
-      const response = await api.post('/servicos/', { ...newService, status: 'PENDENTE' });
-      const createdService = response.data;
-      
-      setServices(prev => [...prev, createdService]);
-
-      setNewService({ cliente: 0, moto: 0, data_servico: '', observacoes: '', kilometragem: 0, descricao: '' });
-      showNotification('Serviço adicionado com sucesso!', 'success');
-    } catch (err: any) {
-      showNotification('Erro ao adicionar o serviço. Verifique os dados e tente novamente.', 'error');
-      console.error('Erro ao adicionar serviço:', err.response?.data);
-    }
+      await api.post('/servicos/', newService);
+      setNewService({ cliente: 0, moto: 0, data_servico: '', observacoes: '', kilometragem: 0, descricao: '', status: 'PENDENTE' });
+      setIsFormVisible(false);
+      setCurrentPage(1);
+      showNotification('Serviço aberto!', 'success');
+    } catch (err) { showNotification('Erro ao abrir serviço.', 'error'); }
   };
 
-  const handleDeleteService = async (serviceId: number) => {
-    if (window.confirm('Tem certeza de que deseja excluir este serviço?')) {
+  const handleDeleteService = async (id: number) => {
+    if (window.confirm('Excluir este serviço?')) {
       try {
-        await api.delete(`/servicos/${serviceId}/`);
-        setServices(services.filter(service => service.id !== serviceId));
-        showNotification('Serviço excluído com sucesso!', 'success');
-      } catch (err: any) {
-        showNotification('Erro ao excluir serviço. Tente novamente mais tarde.', 'error');
-        console.error('Erro ao excluir serviço:', err.response?.data);
-      }
+        await api.delete(`/servicos/${id}/`);
+        fetchData();
+        showNotification('Excluído!', 'success');
+      } catch (err) { showNotification('Erro ao excluir.', 'error'); }
     }
   };
 
-  const handleNextPage = () => {
-    if (nextPageUrl) {
-      setCurrentPage(prev => prev + 1);
-    }
+  const getClientName = (id: number) => clients.find(c => c.id === id)?.nome || '---';
+  const getMotoInfo = (id: number) => {
+    const m = motos.find(mo => mo.id === id);
+    return m ? { modelo: m.modelo, placa: m.placa } : { modelo: '---', placa: '---' };
   };
-
-  const handlePreviousPage = () => {
-    if (previousPageUrl) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
-
-  if (loading) {
-    return <div className="p-4 text-center">Carregando dados...</div>;
-  }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Gerenciamento de Serviços</h1>
+    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+      <div className="flex justify-between items-center mb-8 gap-4">
+        <div className="relative w-2/3">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center">
+            <svg className="h-5 w-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </span>
+          <input
+            type="text"
+            placeholder="Pesquisar por placa, cliente, modelo ou descrição..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none shadow-sm font-medium"
+          />
+        </div>
 
-      {/* Botão Voltar */}
-      <div className="mb-4">
         <button
-          onClick={() => navigate(-1)}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+          onClick={() => setIsFormVisible(!isFormVisible)}
+          className="bg-orange-500 rounded-full p-2.5 hover:bg-orange-600 shadow-md transition-colors cursor-pointer"
         >
-          Voltar
+          <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isFormVisible ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"} />
+          </svg>
         </button>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-        <h2 className="text-xl font-bold mb-4">Adicionar Novo Serviço</h2>
-        <form onSubmit={handleAddService} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Cliente:</label>
-            <select
-              name="cliente"
-              value={newService.cliente}
-              onChange={handleInputChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border rounded"
-            >
-              <option value="0">Selecione um cliente</option>
-              {clients.map(client => (
-                <option key={client.id} value={client.id}>{client.nome}</option>
-              ))}
+      {isFormVisible && (
+        <div className="bg-white shadow-lg rounded-xl p-6 mb-8 border-t-4 border-orange-500">
+          <h2 className="text-xl font-bold mb-4 text-gray-800 uppercase">Abrir Nova Ordem</h2>
+          <form onSubmit={handleAddService} className="grid grid-cols-2 gap-4">
+            <select name="cliente" value={newService.cliente} onChange={handleInputChange} className="p-2 border rounded outline-none font-bold cursor-pointer" required>
+              <option value="0">Selecione o Cliente</option>
+              {clients.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
             </select>
-            {formErrors.cliente && <p className="text-red-500 text-xs mt-1">{formErrors.cliente}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Moto:</label>
-            <select
-              name="moto"
-              value={newService.moto}
-              onChange={handleInputChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border rounded"
-            >
-              <option value="0">Selecione uma moto</option>
-              {motos.map(moto => (
-                <option key={moto.id} value={moto.id}>{moto.placa}</option>
-              ))}
+            <select name="moto" value={newService.moto} onChange={handleInputChange} className="p-2 border rounded outline-none font-bold cursor-pointer" required>
+              <option value="0">Selecione a Moto</option>
+              {motos.map(m => <option key={m.id} value={m.id}>{m.placa} - {m.modelo}</option>)}
             </select>
-            {formErrors.moto && <p className="text-red-500 text-xs mt-1">{formErrors.moto}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Data de Início:</label>
-            <input
-              type="date"
-              name="data_servico"
-              value={newService.data_servico}
-              onChange={handleInputChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border rounded"
-            />
-            {formErrors.data_servico && <p className="text-red-500 text-xs mt-1">{formErrors.data_servico}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Descrição:</label>
-            <textarea
-              name="descricao"
-              value={newService.descricao} 
-              onChange={handleInputChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border rounded"
-            ></textarea>
-            {formErrors.descricao && <p className="text-red-500 text-xs mt-1">{formErrors.descricao}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Quilometragem:</label>
-            <input
-              type="number"
-              name="kilometragem"
-              value={newService.kilometragem}
-              onChange={handleInputChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border rounded"
-            />
-            {formErrors.kilometragem && <p className="text-red-500 text-xs mt-1">{formErrors.kilometragem}</p>}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Observações:</label>
-            <textarea
-              name="observacoes"
-              value={newService.observacoes}
-              onChange={handleInputChange}
-              className="mt-1 block w-full px-3 py-2 border rounded"
-            ></textarea>
-            {formErrors.observacoes && <p className="text-red-500 text-xs mt-1">{formErrors.observacoes}</p>}
-          </div>
-          <button type="submit" className="px-4 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700">
-            Salvar Serviço
-          </button>
-        </form>
-      </div>
+            <input type="date" name="data_servico" value={newService.data_servico} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
+            <input type="number" name="kilometragem" placeholder="KM Atual" value={newService.kilometragem} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
+            <div className="col-span-2">
+              <textarea name="descricao" placeholder="Descrição detalhada do serviço..." value={newService.descricao} onChange={handleInputChange} className="w-full p-2 border rounded h-24 font-medium outline-none focus:ring-1 focus:ring-orange-500" required />
+            </div>
+            <div className="col-span-2 flex justify-end gap-2">
+              <button type="button" onClick={() => setIsFormVisible(false)} className="px-4 py-2 bg-gray-400 text-white rounded font-black uppercase text-xs cursor-pointer">Cancelar</button>
+              <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded font-black uppercase text-xs cursor-pointer">Abrir Serviço</button>
+            </div>
+          </form>
+        </div>
+      )}
 
-      <div className="bg-white shadow-md rounded-lg p-4">
-        <h2 className="text-xl font-bold mb-4">Lista de Serviços</h2>
-        <div className="mb-4 flex space-x-4">
-          <input
-            type="text"
-            placeholder="Buscar por descrição..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          />
-          <select
-            value={selectedStatusFilter}
-            onChange={(e) => setSelectedStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-          >
-            <option value="">Todos os Status</option>
-            <option value="PENDENTE">Pendente</option>
-            <option value="EM_ANDAMENTO">Em Andamento</option>
-            <option value="CONCLUIDO">Concluído</option>
-            <option value="CANCELADO">Cancelado</option>
-          </select>
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Fila de Serviços</h2>
+
+          <div className="flex items-center gap-2">
+            {searchTerm && <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase mr-4">{services.length} Encontrado(s)</span>}
+            <span className="text-gray-500 text-[10px] font-black uppercase">Filtrar Status:</span>
+            <select
+              value={selectedStatusFilter}
+              onChange={handleStatusFilterChange}
+              className="text-black text-[10px] font-bold border-2 border-gray-100 rounded-lg px-2 py-1 outline-none cursor-pointer hover:border-orange-500 transition-colors uppercase"
+            >
+              <option value="">Todos</option>
+              <option value="PENDENTE">Pendente</option>
+              <option value="EM_ANDAMENTO">Andamento</option>
+              <option value="CONCLUIDO">Concluído</option>
+            </select>
+          </div>
         </div>
 
-        {services.length === 0 ? (
-          <p>Nenhum serviço cadastrado.</p>
-        ) : (
-          <ul>
-            {services.map(service => (
-              <li key={service.id} className="border-b last:border-b-0 py-2 flex justify-between items-center">
-                <div>
-                  <Link to={`/servicos/${service.id}`} className="block hover:bg-gray-100 p-2 rounded transition-colors">
-                    <p className="font-semibold">Serviço #{service.id}</p>
-                    <p className="text-sm text-gray-500">
-                      Cliente: {getClientName(service.cliente)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Moto: {getMotoInfo(service.moto)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Data de Início: {service.data_servico}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Status: {service.status}
-                    </p>
-                  </Link>
+        <div className="grid grid-cols-5 gap-4 pb-3 px-2 text-gray-700 font-bold text-sm text-center">
+          <div className="text-left">Dono / Cliente</div>
+          <div>Moto</div>
+          <div>Placa</div>
+          <div>Status</div>
+          <div className="text-right">Ações</div>
+        </div>
+        <div className="h-[1px] bg-black w-full mb-2"></div>
+
+        {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-[10px]">Buscando na oficina...</p> : (
+          <div className="divide-y divide-gray-50">
+            {services.map(service => {
+              const motoInfo = getMotoInfo(service.moto);
+              return (
+                <div key={service.id} className="grid grid-cols-5 gap-4 items-center px-2 py-4 hover:bg-blue-50 transition-all cursor-default text-center">
+                  <div className="text-gray-900 font-bold text-left uppercase text-[11px]">{getClientName(service.cliente)}</div>
+                  <div className="text-sm text-gray-600 font-medium">{motoInfo.modelo}</div>
+                  <div className="text-sm text-gray-600 font-mono font-bold tracking-tighter">{motoInfo.placa}</div>
+                  <div className="flex justify-center">
+                    <span className={`px-4 py-1 rounded-full text-[9px] font-black text-black uppercase ${service.status === 'CONCLUIDO' ? 'bg-green-400' :
+                      service.status === 'PENDENTE' ? 'bg-yellow-400' : 'bg-blue-400'
+                      }`}>
+                      {service.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <div className="flex justify-end gap-6 font-black text-[10px] uppercase">
+                    <Link to={`/servicos/${service.id}`} className="text-indigo-600 hover:text-indigo-800 cursor-pointer">Detalhes</Link>
+                    <button onClick={() => handleDeleteService(service.id)} className="text-red-300 hover:text-red-600 cursor-pointer">Excluir</button>
+                  </div>
                 </div>
-                <button
-                  onClick={() => handleDeleteService(service.id)}
-                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                >
-                  Excluir
-                </button>
-              </li>
-            ))}
-          </ul>
+              );
+            })}
+            {services.length === 0 && <p className="text-center py-10 text-gray-400 text-xs font-bold uppercase">Nenhum serviço encontrado com esse filtro.</p>}
+          </div>
         )}
-        
-        <div className="flex justify-between items-center mt-4">
+
+        {/* PAGINAÇÃO COM PULO DIRETO */}
+        <div className="flex justify-between items-center mt-10 pt-4 border-t border-gray-100 font-black uppercase text-xs">
           <button
-            onClick={handlePreviousPage}
+            onClick={() => setCurrentPage(p => p - 1)}
             disabled={!previousPageUrl || loading}
-            className="px-4 py-2 bg-blue-600 text-white font-bold rounded disabled:bg-gray-400 hover:bg-blue-700 transition-colors"
+            className={`text-blue-600 transition-all ${!previousPageUrl || loading ? 'text-gray-300' : 'cursor-pointer hover:px-2'}`}
           >
-            Anterior
+            {"<"} Anterior
           </button>
-          <span className="text-gray-700">Página {currentPage}</span>
+
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Pág.</span>
+            <input
+              type="text"
+              value={inputPage}
+              onChange={(e) => setInputPage(e.target.value)}
+              onBlur={handleJumpPage}
+              onKeyDown={(e) => e.key === 'Enter' && handleJumpPage()}
+              className="w-10 h-7 text-center border-2 border-orange-100 rounded-lg text-gray-800 outline-none focus:border-orange-500 transition-all font-bold"
+            />
+            <span className="text-gray-400">de {totalPages}</span>
+          </div>
+
           <button
-            onClick={handleNextPage}
+            onClick={() => setCurrentPage(p => p + 1)}
             disabled={!nextPageUrl || loading}
-            className="px-4 py-2 bg-blue-600 text-white font-bold rounded disabled:bg-gray-400 hover:bg-blue-700 transition-colors"
+            className={`text-blue-600 transition-all ${!nextPageUrl || loading ? 'text-gray-300' : 'cursor-pointer hover:px-2'}`}
           >
-            Próximo
+            Próximo {">"}
           </button>
         </div>
       </div>

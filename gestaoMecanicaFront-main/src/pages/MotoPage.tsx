@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/api';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
+// Importamos o ícone de relógio para manter o padrão se necessário, mas aqui foquei no código corrido
+import { Clock } from 'lucide-react'; 
+import Select from 'react-select';
 
-// Definição de tipo para os dados da moto
 interface MotoData {
   id: number;
   cliente: number;
@@ -13,19 +15,11 @@ interface MotoData {
   placa: string;
 }
 
-// Definição de tipo para os dados do cliente (para o select)
 interface ClienteData {
   id: number;
   nome: string;
-}
-
-// Interface para os erros de validação do formulário
-interface FormErrors {
-  cliente?: string;
-  marca?: string;
-  modelo?: string;
-  ano?: string;
-  placa?: string;
+  telefone: string;
+  email: string;
 }
 
 const MotoPage: React.FC = () => {
@@ -33,20 +27,14 @@ const MotoPage: React.FC = () => {
   const [clientes, setClientes] = useState<ClienteData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [newMoto, setNewMoto] = useState<Omit<MotoData, 'id'>>({
-    cliente: 0,
-    marca: '',
-    modelo: '',
-    ano: new Date().getFullYear(),
-    placa: '',
+    cliente: 0, marca: '', modelo: '', ano: new Date().getFullYear(), placa: '',
   });
   const [editingMoto, setEditingMoto] = useState<MotoData | null>(null);
   const [isFormVisible, setIsFormVisible] = useState<boolean>(false);
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [searchTerm, setSearchTerm] = useState<string>('');
-
-  // NOVO: Estados para paginação
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [count, setCount] = useState<number>(0);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [inputPage, setInputPage] = useState<string>('1');
   const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
   const [previousPageUrl, setPreviousPageUrl] = useState<string | null>(null);
 
@@ -56,305 +44,234 @@ const MotoPage: React.FC = () => {
   const fetchData = useCallback(async (page: number, search?: string) => {
     setLoading(true);
     try {
-      const params: { page: number; search?: string } = { page: page };
+      const params: any = { page };
       if (search) params.search = search;
+      
+      const fetchAllClientes = async () => {
+        let allClientes: ClienteData[] = [];
+        let url: string | null = '/clientes/?page_size=100';
+        while (url) {
+          const res: any = await api.get(url);
+          allClientes = [...allClientes, ...res.data.results];
+          url = res.data.next;
+        }
+        return allClientes;
+      };
 
-      const [motosResponse, clientesResponse] = await Promise.all([
-        api.get(`/motos/`, { params: params }),
-        api.get('/clientes/'),
+      const [motosRes, allClientes] = await Promise.all([
+        api.get(`/motos/`, { params }),
+        fetchAllClientes(), 
       ]);
+      
+      setMotos(motosRes.data.results);
+      setClientes(allClientes);
+      setNextPageUrl(motosRes.data.next);
+      setPreviousPageUrl(motosRes.data.previous);
 
-      setMotos(motosResponse.data.results);
-      setClientes(clientesResponse.data.results); // CORREÇÃO: Acesso ao results para clientes
-      setCount(motosResponse.data.count);
-      setNextPageUrl(motosResponse.data.next);
-      setPreviousPageUrl(motosResponse.data.previous);
+      // Cálculo do total de páginas baseado no count do Django (padrão 10 itens)
+      const total = Math.ceil(motosRes.data.count / 10);
+      setTotalPages(total || 1);
+      setInputPage(page.toString());
     } catch (err: any) {
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
-        navigate('/login');
-        showNotification('Sessão expirada. Faça login novamente.', 'error');
-      } else {
-        showNotification('Erro ao carregar os dados. Tente novamente mais tarde.', 'error');
-        console.error('Erro ao buscar motos/clientes:', err);
-      }
+      if (err.response?.status === 401 || err.response?.status === 403) navigate('/login');
     } finally {
       setLoading(false);
     }
-  }, [navigate, showNotification]);
+  }, [navigate]);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      fetchData(currentPage, searchTerm);
-    }, 500);
-
-    return () => {
-      clearTimeout(handler);
-    };
+    const handler = setTimeout(() => fetchData(currentPage, searchTerm), 200);
+    return () => clearTimeout(handler);
   }, [currentPage, searchTerm, fetchData]);
 
-  const validateForm = (motoData: Omit<MotoData, 'id'> | MotoData): FormErrors => {
-    const errors: FormErrors = {};
-    if (motoData.cliente === 0) {
-      errors.cliente = 'Cliente é obrigatório.';
+  // Função para pular para página específica
+  const handleJumpPage = () => {
+    const pageNum = parseInt(inputPage);
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      setCurrentPage(pageNum);
+    } else {
+      setInputPage(currentPage.toString());
+      showNotification(`Página inválida. Total: ${totalPages}`, 'info');
     }
-    if (!motoData.marca) {
-      errors.marca = 'Marca é obrigatória.';
-    }
-    if (!motoData.modelo) {
-      errors.modelo = 'Modelo é obrigatório.';
-    }
-    if (!motoData.placa) {
-      errors.placa = 'Placa é obrigatória.';
-    }
-    if (!motoData.ano || motoData.ano < 1900 || motoData.ano > new Date().getFullYear() + 1) {
-      errors.ano = 'Ano inválido.';
-    }
-    return errors;
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormErrors(prev => ({ ...prev, [name]: undefined }));
-
     const parsedValue = name === 'cliente' || name === 'ano' ? Number(value) : value;
-
-    if (editingMoto) {
-      setEditingMoto({ ...editingMoto, [name]: parsedValue });
-    } else {
-      setNewMoto({ ...newMoto, [name]: parsedValue });
-    }
+    if (editingMoto) setEditingMoto({ ...editingMoto, [name]: parsedValue });
+    else setNewMoto({ ...newMoto, [name]: parsedValue });
   };
 
   const handleAddMoto = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors = validateForm(newMoto);
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      showNotification('Preencha todos os campos obrigatórios.', 'error');
-      return;
-    }
-    setFormErrors({});
-
     try {
       await api.post('/motos/', newMoto);
       setNewMoto({ cliente: 0, marca: '', modelo: '', ano: new Date().getFullYear(), placa: '' });
       setIsFormVisible(false);
-      setCurrentPage(1); // NOVO: Volta para a primeira página após adicionar
-      fetchData(1, searchTerm); // Recarrega com a primeira página
-      showNotification('Moto adicionada com sucesso!', 'success');
-    } catch (err: any) {
-      showNotification('Erro ao adicionar moto. Verifique os dados e tente novamente.', 'error');
-      console.error('Erro ao adicionar moto:', err.response?.data);
-    }
-  };
-
-  const handleEditClick = (moto: MotoData) => {
-    setEditingMoto(moto);
-    setIsFormVisible(true);
-    setFormErrors({});
+      setCurrentPage(1);
+      showNotification('Moto adicionada!', 'success');
+    } catch (err) { showNotification('Erro ao adicionar.', 'error'); }
   };
 
   const handleUpdateMoto = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingMoto) return;
-
-    const errors = validateForm(editingMoto);
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      showNotification('Preencha todos os campos obrigatórios.', 'error');
-      return;
-    }
-    setFormErrors({});
-
     try {
       await api.put(`/motos/${editingMoto.id}/`, editingMoto);
       setEditingMoto(null);
       setIsFormVisible(false);
-      fetchData(currentPage, searchTerm); // Recarrega com a página e termo de busca atuais
-      showNotification('Moto atualizada com sucesso!', 'success');
-    } catch (err: any) {
-      showNotification('Erro ao atualizar moto. Verifique os dados e tente novamente.', 'error');
-      console.error('Erro ao atualizar moto:', err.response?.data);
-    }
+      fetchData(currentPage, searchTerm);
+      showNotification('Moto atualizada!', 'success');
+    } catch (err) { showNotification('Erro ao atualizar.', 'error'); }
   };
 
-  const handleDeleteMoto = async (motoId: number) => {
-    if (window.confirm('Tem certeza de que deseja excluir esta moto?')) {
+  const handleDeleteMoto = async (id: number) => {
+    if (window.confirm('Excluir esta moto?')) {
       try {
-        await api.delete(`/motos/${motoId}/`);
-        fetchData(currentPage, searchTerm); // Recarrega com a página e termo de busca atuais
-        showNotification('Moto excluída com sucesso!', 'success');
-      } catch (err: any) {
-        showNotification('Erro ao excluir moto. Tente novamente mais tarde.', 'error');
-        console.error('Erro ao excluir moto:', err.response?.data);
-      }
+        await api.delete(`/motos/${id}/`);
+        fetchData(currentPage, searchTerm);
+        showNotification('Moto excluída.', 'success');
+      } catch (err) { showNotification('Erro ao excluir.', 'error'); }
     }
   };
 
-  const getClientName = (clientId: number) => {
-    const client = clientes.find(c => c.id === clientId);
-    return client ? client.nome : 'Cliente Desconhecido';
-  };
-
-  // NOVO: Funções para navegar entre as páginas
-  const handleNextPage = () => {
-    if (nextPageUrl) {
-      setCurrentPage(prev => prev + 1);
-    }
-  };
-
-  const handlePreviousPage = () => {
-    if (previousPageUrl) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
-  if (loading) {
-    return <div className="p-4 text-center">Carregando motos...</div>;
-  }
+  const getClientData = (clientId: number) => clientes.find(c => c.id === clientId);
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Gerenciamento de Motos</h1>
+    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+      <div className="flex justify-between items-center mb-8">
+        <div className="relative w-2/3">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center">
+            <svg className="h-5 w-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </span>
+          <input
+            type="text"
+            placeholder="Pesquisar por modelo, placa ou nome do dono..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none shadow-sm font-medium"
+          />
+        </div>
 
-      {/* Botão Voltar posicionado para sempre aparecer */}
-      <div className="mb-4">
         <button
-          onClick={() => navigate(-1)}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+          onClick={() => { setIsFormVisible(!isFormVisible); setEditingMoto(null); }}
+          className="bg-orange-500 rounded-full p-2.5 hover:bg-orange-600 shadow-md transition-colors cursor-pointer"
         >
-          Voltar
+          <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isFormVisible ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"} />
+          </svg>
         </button>
       </div>
 
-      {/* NOVO: Campo de busca */}
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Buscar motos por modelo ou placa..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-        />
-      </div>
-
-      <button
-        onClick={() => {
-          setIsFormVisible(!isFormVisible);
-          setEditingMoto(null);
-          setNewMoto({ cliente: 0, marca: '', modelo: '', ano: new Date().getFullYear(), placa: '' });
-          setFormErrors({});
-        }}
-        className="mb-4 px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition duration-150"
-      >
-        {isFormVisible ? 'Esconder Formulário' : 'Adicionar Nova Moto'}
-      </button>
-
       {isFormVisible && (
-        <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">{editingMoto ? 'Editar Moto' : 'Nova Moto'}</h2>
-          <form onSubmit={editingMoto ? handleUpdateMoto : handleAddMoto} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Cliente:</label>
-              <select
-                name="cliente"
-                value={editingMoto ? editingMoto.cliente : newMoto.cliente}
-                onChange={handleInputChange}
-                required
-                className="mt-1 block w-full px-3 py-2 border rounded"
-              >
-                <option value={0}>Selecione um cliente</option>
-                {clientes.map(cliente => (
-                  <option key={cliente.id} value={cliente.id}>
-                    {cliente.nome}
-                  </option>
-                ))}
-              </select>
-              {formErrors.cliente && <p className="text-red-500 text-xs mt-1">{formErrors.cliente}</p>}
+        <div className="bg-white shadow-lg rounded-xl p-6 mb-8 border-t-4 border-orange-500">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">{editingMoto ? 'Editar Moto' : 'Nova Moto'}</h2>
+          <form onSubmit={editingMoto ? handleUpdateMoto : handleAddMoto} className="grid grid-cols-2 gap-4">
+            <Select
+              name="cliente"
+              options={clientes.map(c => ({ value: c.id, label: c.nome }))}
+              value={
+                editingMoto && editingMoto.cliente
+                  ? { value: editingMoto.cliente, label: clientes.find(c => c.id === editingMoto.cliente)?.nome }
+                  : newMoto.cliente
+                  ? { value: newMoto.cliente, label: clientes.find(c => c.id === newMoto.cliente)?.nome }
+                  : null
+              }
+              onChange={(selectedOption) => {
+                const value = selectedOption ? selectedOption.value : 0;
+                if (editingMoto) {
+                  setEditingMoto({ ...editingMoto, cliente: value });
+                } else {
+                  setNewMoto({ ...newMoto, cliente: value });
+                }
+              }}
+              placeholder="Selecione um cliente"
+              className="font-bold text-sm"
+              isClearable
+            />
+            <input type="text" name="marca" placeholder="Marca (Ex: Honda)" value={(editingMoto ? editingMoto.marca : newMoto.marca) || ''} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
+            <input type="text" name="modelo" placeholder="Modelo (Ex: CB 500)" value={(editingMoto ? editingMoto.modelo : newMoto.modelo) || ''} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
+            <input type="number" name="ano" placeholder="Ano" value={(editingMoto ? editingMoto.ano : newMoto.ano) || ''} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
+            <input type="text" name="placa" placeholder="Placa" value={(editingMoto ? editingMoto.placa : newMoto.placa) || ''} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
+            <div className="col-span-2 flex justify-end gap-2 mt-2">
+              <button type="button" onClick={() => setIsFormVisible(false)} className="px-4 py-2 bg-gray-400 text-white rounded font-bold uppercase text-xs cursor-pointer">Cancelar</button>
+              <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded font-bold uppercase text-xs cursor-pointer">{editingMoto ? 'Atualizar Dados' : 'Salvar Moto'}</button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Marca:</label>
-              <input type="text" name="marca" value={editingMoto ? editingMoto.marca : newMoto.marca} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.marca && <p className="text-red-500 text-xs mt-1">{formErrors.marca}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Modelo:</label>
-              <input type="text" name="modelo" value={editingMoto ? editingMoto.modelo : newMoto.modelo} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.modelo && <p className="text-red-500 text-xs mt-1">{formErrors.modelo}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Ano:</label>
-              <input type="number" name="ano" value={editingMoto ? editingMoto.ano : newMoto.ano} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.ano && <p className="text-red-500 text-xs mt-1">{formErrors.ano}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Placa:</label>
-              <input type="text" name="placa" value={editingMoto ? editingMoto.placa : newMoto.placa} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.placa && <p className="text-red-500 text-xs mt-1">{formErrors.placa}</p>}
-            </div>
-            <button type="submit" className="px-4 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700">
-              {editingMoto ? 'Atualizar Moto' : 'Salvar Moto'}
-            </button>
-            {editingMoto && (
-              <button
-                type="button"
-                onClick={() => setEditingMoto(null)}
-                className="ml-2 px-4 py-2 bg-gray-500 text-white font-bold rounded hover:bg-gray-600"
-              >
-                Cancelar Edição
-              </button>
-            )}
           </form>
         </div>
       )}
 
-      <div className="bg-white shadow-md rounded-lg p-4">
-        <h2 className="text-xl font-bold mb-4">Lista de Motos</h2>
-        {motos.length === 0 ? (
-          <p>Nenhuma moto cadastrada.</p>
-        ) : (
-          <ul>
-            {motos.map(moto => (
-              <li key={moto.id} className="border-b last:border-b-0 py-2 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold">{moto.marca} - {moto.modelo} ({moto.ano})</p>
-                  <p className="text-sm text-gray-500">Placa: {moto.placa}</p>
-                  <p className="text-sm text-gray-500">Cliente: {getClientName(moto.cliente)}</p>
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Motos</h2>
+          {searchTerm && <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">{motos.length} Encontrada(s)</span>}
+        </div>
+
+        <div className="grid grid-cols-5 gap-4 pb-3 px-2 text-gray-700 font-bold text-sm text-center">
+          <div className="text-left">Dono (Cliente)</div>
+          <div>Moto / Modelo</div>
+          <div>Placa</div>
+          <div>Contato</div>
+          <div className="text-right">Ações</div>
+        </div>
+        <div className="h-[1px] bg-black w-full mb-2"></div>
+
+        {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Carregando...</p> : (
+          <div className="divide-y divide-gray-50">
+            {motos.map(moto => {
+              const clienteInfo = getClientData(moto.cliente);
+              return (
+                <div key={moto.id} className="grid grid-cols-5 gap-4 items-center px-2 py-4 hover:bg-blue-50 transition-colors text-center">
+                  <div className="text-gray-900 font-bold text-left uppercase text-[11px]">{clienteInfo?.nome || '---'}</div>
+                  <div className="text-sm text-gray-600 font-medium">{moto.marca} {moto.modelo} ({moto.ano})</div>
+                  <div className="text-sm text-gray-600 font-mono font-bold tracking-tighter">{moto.placa}</div>
+                  <div className="text-sm text-gray-500 font-bold">{clienteInfo?.telefone || '---'}</div>
+                  <div className="flex justify-end gap-6 font-black text-[10px] uppercase">
+                    <button onClick={() => { setEditingMoto(moto); setIsFormVisible(true); }} className="text-yellow-600 hover:text-yellow-700 cursor-pointer">Editar</button>
+                    <button onClick={() => handleDeleteMoto(moto.id)} className="text-red-300 hover:text-red-600 cursor-pointer">Excluir</button>
+                  </div>
                 </div>
-                <div>
-                  <button
-                    onClick={() => handleEditClick(moto)}
-                    className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMoto(moto.id)}
-                    className="ml-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                  >
-                    Excluir
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+              );
+            })}
+          </div>
         )}
-        {/* NOVO: Controles de Paginação */}
-        <div className="flex justify-between items-center mt-4">
-          <button
-            onClick={handlePreviousPage}
-            disabled={!previousPageUrl || loading}
-            className="px-4 py-2 bg-blue-600 text-white font-bold rounded disabled:bg-gray-400 hover:bg-blue-700 transition-colors"
+
+        {/* PAGINAÇÃO COM PULO DE PÁGINA */}
+        <div className="flex justify-between items-center mt-10 pt-4 border-t border-gray-100 font-black uppercase text-xs">
+          <button 
+            onClick={() => setCurrentPage(p => p - 1)} 
+            disabled={!previousPageUrl || loading} 
+            className={`text-blue-600 transition-all ${!previousPageUrl || loading ? 'text-gray-300 cursor-default' : 'cursor-pointer hover:px-2'}`}
           >
-            Anterior
+            {"<"} Voltar
           </button>
-          <span className="text-gray-700">Página {currentPage}</span>
-          <button
-            onClick={handleNextPage}
-            disabled={!nextPageUrl || loading}
-            className="px-4 py-2 bg-blue-600 text-white font-bold rounded disabled:bg-gray-400 hover:bg-blue-700 transition-colors"
+
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Pág.</span>
+            <input 
+              type="text" 
+              value={inputPage}
+              onChange={(e) => setInputPage(e.target.value)}
+              onBlur={handleJumpPage}
+              onKeyDown={(e) => e.key === 'Enter' && handleJumpPage()}
+              className="w-10 h-7 text-center border-2 border-orange-100 rounded-lg text-gray-800 outline-none focus:border-orange-500 transition-all font-bold"
+            />
+            <span className="text-gray-400">de {totalPages}</span>
+          </div>
+
+          <button 
+            onClick={() => setCurrentPage(p => p + 1)} 
+            disabled={!nextPageUrl || loading} 
+            className={`text-blue-600 transition-all ${!nextPageUrl || loading ? 'text-gray-300 cursor-default' : 'cursor-pointer hover:px-2'}`}
           >
-            Próximo
+            Próximo {">"}
           </button>
         </div>
       </div>

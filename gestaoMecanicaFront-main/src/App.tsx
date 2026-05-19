@@ -13,13 +13,18 @@ import PartPage from './pages/PartPage';
 import ReportsPage from './pages/ReportsPage';
 import ClientHistoryPage from './pages/ClientHistoryPage';
 import SolicitacoesScreen from './components/SolicitacoesScreen';
+import ConfiguracoesPage from './pages/ConfiguracoesPage';
+import NewServiceIntegrated from './pages/NewServiceIntegrated';
+import VendaBalcao from './pages/VendaBalcao';
+import AgendamentosPage from './pages/AgendamentosPage';
+import CadastroTokenScreen from './pages/CadastroTokenScreen';
 
+// IMPORTAÇÃO DO CHAT DE IA
+import AIChatWidget from './components/AIChatWidget'; 
 
 import Layout from './components/Layout';
 import { NotificationProvider } from './contexts/NotificationContext';
 
-
-// Essa interface garante o tipo correto para o prop de autenticação
 interface AuthProps {
   setIsAuthenticated: (isAuthenticated: boolean) => void;
 }
@@ -33,13 +38,12 @@ function App() {
     // Logica para validar o token ao iniciar
   }, []);
 
-  // Um componente para agrupar as rotas protegidas
   const ProtectedRoutes = () => {
     if (!isAuthenticated) {
       return <Navigate to="/login" replace />;
     }
     return (
-      <Layout>
+      <Layout setIsAuthenticated={setIsAuthenticated}>
         <Routes>
           <Route path="/" element={<HomePage setIsAuthenticated={setIsAuthenticated} />} />
           <Route path="/clientes" element={<ClientPage />} />
@@ -50,20 +54,23 @@ function App() {
           <Route path="/relatorios" element={<ReportsPage />} />
           <Route path="/clientes/:id/historico" element={<ClientHistoryPage />} />
           <Route path="/solicitacoes" element={<SolicitacoesScreen />} />
+          <Route path="/configuracoes" element={<ConfiguracoesPage/>} />
+          <Route path="/servicos/novo" element={<NewServiceIntegrated />} />
+          <Route path="/venda-balcao" element={<VendaBalcao />} />
+          <Route path="/agendamentos" element={<AgendamentosPage />} />
         </Routes>
+        
+        <AIChatWidget /> 
       </Layout>
     );
   };
-
 
   return (
     <NotificationProvider>
       <Router>
         <Routes>
-          {/* Rota pública para login */}
           <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
-          
-          {/* Rotas protegidas */}
+          <Route path="/cadastro-token" element={<CadastroTokenScreen />} />
           <Route path="/*" element={<ProtectedRoutes />} />
         </Routes>
       </Router>

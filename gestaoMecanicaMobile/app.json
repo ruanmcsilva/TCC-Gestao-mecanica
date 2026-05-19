@@ -1,44 +1,46 @@
 {
   "expo": {
-    "name": "gestaoMecanicaMobile",
+    "name": "Space Motos",
     "slug": "gestaoMecanicaMobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/src/img/icon.png",
+    "splash": {
+      "image": "./assets/src/img/splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#1E1E1E"
+    },
+    "icon": "./assets/src/img/splash.png",
     "scheme": "gestao-mecanica",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "entryPoint": "./App.tsx",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ruanmatheus.spacemotos"
     },
     "android": {
+      "package": "com.ruanmatheus.spacemotos",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/src/img/fundo.jpeg",
-        "backgroundImage": "./assets/src/img/fundo.jpeg",
-        "monochromeImage": "./assets/src/img/fundo.jpeg"
+        "foregroundImage": "./assets/src/img/splash.png",
+        "backgroundColor": "#1E1E1E"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/src/img/splash.png"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
+          "image": "./assets/src/img/splash.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#1E1E1E"
         }
-      ]
+      ],
+      "expo-camera"
     ],
     "experiments": {
       "typedRoutes": true,

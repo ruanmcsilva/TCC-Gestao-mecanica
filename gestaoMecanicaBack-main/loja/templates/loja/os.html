@@ -4,122 +4,255 @@
     <meta charset="UTF-8" />
     <title>Ordem de Serviço #{{ servico.id }}</title>
     <style>
+      @page {
+        size: A4;
+        margin: 2cm;
+        /* Define o fundo da página inteira para a marca d'água */
+        @background {
+          content: url("https://res.cloudinary.com/ruan-mec/image/upload/v1/logos/logo_mecanica_background.png");
+          opacity: 0.10; /* BEM Clarinhapara não atrapalhar a leitura */
+          width: 80%; /* Bem grande no fundo */
+          height: auto;
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%) rotate(-30deg); /* Centralizada e inclinada */
+        }
+      }
+      
       body {
-        font-family: Arial, sans-serif;
+        font-family: 'Helvetica', 'Arial', sans-serif;
+        color: #333;
+        line-height: 1.4;
         margin: 0;
-        padding: 20px;
-        font-size: 12px;
+        padding: 0;
       }
+      
+      /* Elementos para segurar a marca d'água se o WeasyPrint falhar na @page */
+      .watermark {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        opacity: 0.10; /* Quase invisível */
+        width: 80%;
+        z-index: -1000; /* Fica atrás de tudo */
+      }
+
       .container {
-        max-width: 800px;
-        margin: auto;
-        border: 1px solid #ccc;
-        padding: 20px;
+        padding: 10px;
+        position: relative; /* Para o z-index funcionar */
       }
+      
+      /* Cabeçalho Profissional */
       .header {
         text-align: center;
-        margin-bottom: 20px;
+        border-bottom: 3px solid #f97316; /* Laranja do sistema */
+        padding-bottom: 20px;
+        margin-bottom: 30px;
       }
-      .header h1 {
-        margin: 0;
-        font-size: 24px;
+      
+      .logo-container {
+        margin-bottom: 10px;
       }
-      .details,
-      .parts-table,
-      .totals {
-        margin-bottom: 20px;
+
+      .logo-img {
+        max-width: 150px;
+        height: auto;
       }
-      table {
+
+      .company-name {
+        font-size: 20px;
+        font-weight: 900;
+        color: #111827;
+        text-transform: uppercase;
+        margin-top: 5px;
+      }
+      
+      .header p { margin: 2px 0; color: #666; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+      
+      .os-number {
+        display: inline-block;
+        background: #111827;
+        color: white;
+        padding: 5px 15px;
+        border-radius: 50px;
+        margin-top: 10px;
+        font-weight: bold;
+      }
+
+      /* Grid de Informações */
+      .info-grid {
+        width: 100%;
+        margin-bottom: 30px;
+        border-collapse: separate;
+        border-spacing: 0 10px;
+      }
+      .info-box {
+        vertical-align: top;
+        width: 48%;
+        background: #f8fafc;
+        padding: 15px;
+        border-radius: 10px;
+      }
+      .info-box h3 {
+        margin: 0 0 10px 0;
+        font-size: 11px;
+        color: #f97316;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 5px;
+      }
+      .info-box p { margin: 4px 0; font-size: 11px; }
+
+      /* Descrição do Problema */
+      .description-box {
+        background: #fffbeb;
+        border: 1px solid #fef3c7;
+        padding: 15px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+      }
+      .description-box h3 { margin: 0 0 5px 0; font-size: 11px; text-transform: uppercase; }
+      .description-box p { margin: 0; font-size: 12px; font-style: italic; color: #444; }
+
+      /* Tabela de Peças */
+      .items-table {
         width: 100%;
         border-collapse: collapse;
+        margin-bottom: 20px;
       }
-      th,
-      td {
-        border: 1px solid #ccc;
-        padding: 8px;
+      .items-table th {
+        background: #f1f5f9;
+        color: #475569;
+        text-transform: uppercase;
+        font-size: 10px;
+        padding: 12px 10px;
         text-align: left;
+        border-bottom: 2px solid #e2e8f0;
       }
-      th {
-        background-color: #f2f2f2;
+      .items-table td {
+        padding: 10px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 11px;
       }
-      .totals {
-        text-align: right;
+      .row-even { background-color: #fafafa; }
+
+      /* Totais */
+      .totals-area {
+        float: right;
+        width: 250px;
+        margin-top: 20px;
       }
-      .totals p {
-        margin: 5px 0;
+      .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+      }
+      .total-label { font-size: 11px; color: #64748b; text-transform: uppercase; }
+      .total-value { font-weight: bold; font-size: 12px; text-align: right; float: right;}
+      .grand-total {
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 2px solid #111827;
+        color: #f97316;
+        font-size: 18px !important;
+      }
+
+      .footer {
+        clear: both;
+        margin-top: 80px;
+        text-align: center;
+        font-size: 10px;
+        color: #94a3b8;
+        border-top: 1px solid #f1f5f9;
+        padding-top: 20px;
       }
     </style>
   </head>
   <body>
+    <img src="file://{{ logo_path }}" alt="Marca d'água" class="watermark">
+
     <div class="container">
       <div class="header">
-        <h1>Ordem de Serviço</h1>
-        <p><strong>Número:</strong> #{{ servico.id }}</p>
+        <div class="logo-container">
+          <img src="file://{{ logo_path }}" alt="Logo" class="logo-img">
+        </div>
+        <p>Sua Oficina em Boas Mãos</p>
+        <div class="os-number">ORDEM DE SERVIÇO #{{ servico.id }}</div>
       </div>
 
-      <div class="details">
-        <p><strong>Cliente:</strong> {{ cliente.nome }}</p>
-        <p><strong>Telefone:</strong> {{ cliente.telefone|default:"N/A" }}</p>
-        <p>
-          <strong>Moto:</strong> {{ moto.marca }} {{ moto.modelo }} (Placa: {{
-          moto.placa }})
-        </p>
-        <p>
-          <strong>Data de Início:</strong> {{ servico.data_inicio|date:"d/m/Y
-          H:i" }}
-        </p>
-        <p><strong>Descrição do Serviço:</strong> {{ servico.descricao }}</p>
-        <p><strong>Status:</strong> {{ servico.get_status_display }}</p>
+      <table class="info-grid">
+        <tr>
+          <td class="info-box">
+            <h3>Dados do Cliente</h3>
+            <p><strong>Nome:</strong> {{ cliente.nome }}</p>
+            <p><strong>CPF/CNPJ:</strong> {{ cliente.cpf_cnpj|default:"---" }}</p>
+            <p><strong>Telefone:</strong> {{ cliente.telefone|default:"---" }}</p>
+            <p><strong>E-mail:</strong> {{ cliente.email|default:"---" }}</p>
+          </td>
+          <td style="width: 4%;"></td> <td class="info-box">
+            <h3>Dados do Veículo</h3>
+            <p><strong>Moto:</strong> {{ moto.marca }} {{ moto.modelo }}</p>
+            <p><strong>Ano:</strong> {{ moto.ano }}</p>
+            <p><strong>Placa:</strong> {{ moto.placa|upper }}</p>
+            <p><strong>KM Atual:</strong> {{ servico.kilometragem }} km</p>
+          </td>
+        </tr>
+      </table>
+
+      <div class="description-box">
+        <h3>Relato do Problema / Descrição</h3>
+        <p>{{ servico.descricao }}</p>
       </div>
 
-      <div class="parts-table">
-        <h3>Peças Utilizadas</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Peça</th>
-              <th>Descrição</th>
-              <th>Quantidade</th>
-              <th>Valor Unitário</th>
-              <th>Valor Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for item in itens %}
-            <tr>
-              <td>{{ item.peca.nome }}</td>
-              <td>{{ item.peca.descricao|default:"N/A" }}</td>
-              <td>{{ item.quantidade_utilizada }}</td>
-              <td>R$ {{ item.valor_unitario_na_epoca|floatformat:2 }}</td>
-              <td>R$ {{ item.valor_total_item|floatformat:2 }}</td>
-            </tr>
-            {% empty %}
-            <tr>
-              <td colspan="5">Nenhuma peça utilizada neste serviço.</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
+      <h3 style="font-size: 11px; text-transform: uppercase; color: #475569; margin-bottom: 10px;">Itens e Peças</h3>
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th>Qtd</th>
+            <th>Descrição da Peça</th>
+            <th>Valor Unit.</th>
+            <th style="text-align: right;">Total Item</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in itens %}
+          <tr class="{% cycle '' 'row-even' %}">
+            <td style="width: 50px;">{{ item.quantidade_utilizada }}</td>
+            <td style="font-weight: bold; color: #111827;">{{ item.peca.nome }}</td>
+            <td>R$ {{ item.valor_unitario_na_epoca|floatformat:2 }}</td>
+            <td style="text-align: right; font-weight: bold; color: #f97316;">R$ {{ item.valor_total_item|floatformat:2 }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="4" style="text-align: center; color: #999; padding: 20px;">Nenhuma peça lançada nesta OS.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
 
-      <div class="totals">
-        <p>
-          <strong>Valor da Mão de Obra:</strong> R$ {{
-          servico.valor_mao_de_obra|floatformat:2 }}
-        </p>
-        <p>
-          <strong>Total de Peças:</strong> R$ {{
-          servico.valor_total_pecas|floatformat:2 }}
-        </p>
-        <hr />
-        <p>
-          <strong>Total Geral do Serviço:</strong> R$ {{
-          servico.valor_total_servico|floatformat:2 }}
-        </p>
+      <div class="totals-area">
+        <div class="total-row">
+          <span class="total-label">Mão de Obra:</span>
+          <span class="total-value">R$ {{ servico.valor_mao_de_obra|floatformat:2 }}</span>
+        </div>
+        <div style="clear: both;"></div>
+        <div class="total-row">
+          <span class="total-label">Total Peças:</span>
+          <span class="total-value">R$ {{ servico.valor_total_pecas|floatformat:2 }}</span>
+        </div>
+        <div style="clear: both;"></div>
+        <div class="total-row grand-total">
+          <span class="total-label" style="color: #111827; font-weight: 900; font-size: 14px;">Total Geral:</span>
+          <span class="total-value" style="font-size: 18px;">R$ {{ servico.valor_total_servico|floatformat:2 }}</span>
+        </div>
       </div>
 
       <div class="footer">
-        <p style="text-align: center">Obrigado por escolher nossa mecânica!</p>
+        <p>Documento gerado em {{ servico.data_fim|date:"d/m/Y H:i"|default:"---" }}</p>
+        <p>Acesse seu histórico em: <strong>meuhistorico.com/{{ servico.id }}</strong></p>
+        <p style="margin-top: 20px;"><strong>Assinatura do Técnico:</strong> __________________________________________</p>
       </div>
     </div>
   </body>

@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/api';
 import { useNavigate, Link } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 
-// Definição de tipo para os dados do cliente
 interface ClientData {
   id: number;
   nome: string;
@@ -13,335 +12,280 @@ interface ClientData {
   endereco: string;
 }
 
-// Interface para os erros de validação do formulário
-interface FormErrors {
-  nome?: string;
-  telefone?: string;
-  email?: string;
-  cpf_cnpj?: string;
-  endereco?: string;
-}
-
 const ClientPage: React.FC = () => {
   const [clients, setClients] = useState<ClientData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [newClient, setNewClient] = useState<Omit<ClientData, 'id'>>({
-    nome: '',
-    telefone: '',
-    email: '',
-    cpf_cnpj: '',
-    endereco: '',
+    nome: '', telefone: '', email: '', cpf_cnpj: '', endereco: '',
   });
   const [editingClient, setEditingClient] = useState<ClientData | null>(null);
   const [isFormVisible, setIsFormVisible] = useState<boolean>(false);
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [searchTerm, setSearchTerm] = useState<string>(''); 
-  
-  //historico botao
-  const [serviceHistory, setServiceHistory] = useState<any[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
-
-
-  const [currentPage, setCurrentPage] = useState<number>(1); 
-  const [count, setCount] = useState<number>(0); 
-  const [nextPageUrl, setNextPageUrl] = useState<string | null>(null); 
-  const [previousPageUrl, setPreviousPageUrl] = useState<string | null>(null); 
+  const [searchTerm, setSearchTerm] = useState<string>('');
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [inputPage, setInputPage] = useState<string>('1');
+  const [nextPageUrl, setNextPageUrl] = useState<string | null>(null);
+  const [previousPageUrl, setPreviousPageUrl] = useState<string | null>(null);
 
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 
-  // NOVO: fetchData agora aceita a página e o termo de busca
-  const fetchData = async (page: number, search?: string) => {
+  // --- FUNÇÃO DE MÁSCARA PARA SEGURANÇA ---
+  const maskCPF = (value: string) => {
+    if (!value) return '---';
+    const cleanValue = value.replace(/\D/g, '');
+    if (cleanValue.length === 11) {
+      // Mascara CPF: 123.***.***-00
+      return `${cleanValue.substring(0, 3)}.***.***-${cleanValue.substring(9)}`;
+    } else if (cleanValue.length === 14) {
+      // Mascara CNPJ: 12.***.*** / ****-00
+      return `${cleanValue.substring(0, 2)}.***.***/****-${cleanValue.substring(12)}`;
+    }
+    return value;
+  };
+
+  const fetchData = useCallback(async (page: number, search?: string) => {
     setLoading(true);
     try {
-      const params: { page: number; search?: string } = { page: page };
+      const params: any = { page };
       if (search) params.search = search;
-
-      const response = await api.get(`/clientes/`, { params: params });
+      const response = await api.get(`/clientes/`, { params });
+      
       setClients(response.data.results);
-      setCount(response.data.count);
       setNextPageUrl(response.data.next);
       setPreviousPageUrl(response.data.previous);
+      
+      const total = Math.ceil(response.data.count / 10);
+      setTotalPages(total || 1);
+      setInputPage(page.toString());
     } catch (err: any) {
-      if (err.response && (err.response.status === 401 || err.response.status === 403)) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
         navigate('/login');
-        showNotification('Sessão expirada. Faça login novamente.', 'error');
-      } else {
-        showNotification('Erro ao carregar os clientes. Tente novamente mais tarde.', 'error');
-        console.error('Erro ao buscar clientes:', err);
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
-  // NOVO: useEffect para buscar dados quando a página ou o termo de busca mudam
   useEffect(() => {
     const handler = setTimeout(() => {
       fetchData(currentPage, searchTerm);
-    }, 500); // Atraso de 500ms para o debounce
+    }, 200);
+    return () => clearTimeout(handler);
+  }, [currentPage, searchTerm, fetchData]);
 
-    return () => {
-      clearTimeout(handler);
-    };
-  }, [currentPage, searchTerm, navigate, showNotification]); // Dependências para re-executar
+  const handleJumpPage = () => {
+    const pageNum = parseInt(inputPage);
+    if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
+      setCurrentPage(pageNum);
+    } else {
+      setInputPage(currentPage.toString());
+      showNotification(`Página inválida. Total: ${totalPages}`, 'info');
+    }
+  };
 
-  const validateForm = (clientData: Omit<ClientData, 'id'> | ClientData): FormErrors => {
-    const errors: FormErrors = {};
-    if (!clientData.nome) {
-      errors.nome = 'Nome é obrigatório.';
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleCEPBlur = async (cepValue: string) => {
+    const cep = cepValue.replace(/\D/g, '');
+    if (cep.length === 8) {
+      try {
+        const response = await api.get(`/consulta/cep/${cep}/`);
+        const enderecoCompleto = `${response.data.street || ''}, ${response.data.neighborhood || ''}, ${response.data.city || ''} - ${response.data.state || ''}`;
+        if (editingClient) setEditingClient({ ...editingClient, endereco: enderecoCompleto });
+        else setNewClient(prev => ({ ...prev, endereco: enderecoCompleto }));
+        showNotification('Endereço preenchido!', 'success');
+      } catch (err) { showNotification('CEP não encontrado.', 'error'); }
     }
-    if (!clientData.email) {
-      errors.email = 'Email é obrigatório.';
-    } else if (!/\S+@\S+\.\S+/.test(clientData.email)) {
-      errors.email = 'Email inválido.';
+  };
+
+  const handleCPFBlur = async (cpfValue: string) => {
+    const cpf = cpfValue.replace(/\D/g, '');
+    if (cpf.length === 11) {
+      try {
+        await api.get(`/consulta/cpf/${cpf}/`);
+        showNotification('Documento válido!', 'success');
+      } catch (err) { showNotification('Documento inválido.', 'error'); }
     }
-    if (!clientData.cpf_cnpj) {
-      errors.cpf_cnpj = 'CPF/CNPJ é obrigatório.';
-    }
-    return errors;
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormErrors(prev => ({ ...prev, [name]: undefined })); 
-
-    if (editingClient) {
-      setEditingClient({ ...editingClient, [name]: value });
-    } else {
-      setNewClient({ ...newClient, [name]: value });
-    }
+    if (editingClient) setEditingClient({ ...editingClient, [name]: value });
+    else setNewClient({ ...newClient, [name]: value });
   };
 
-  const handleAddClient = async (e: React.FormEvent) => {
+const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
-    const errors = validateForm(newClient);
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      showNotification('Preencha todos os campos obrigatórios.', 'error');
-      return;
-    }
-    setFormErrors({}); 
-
     try {
-      await api.post('/clientes/', newClient);
+      // Capturamos a resposta do servidor para pegar o link do WhatsApp
+      const response = await api.post('/clientes/', newClient);
+      
       setNewClient({ nome: '', telefone: '', email: '', cpf_cnpj: '', endereco: '' });
       setIsFormVisible(false);
-      setCurrentPage(1); // NOVO: Volta para a primeira página após adicionar
-      showNotification('Cliente adicionado com sucesso!', 'success');
-    } catch (err: any) {
-      showNotification('Erro ao adicionar cliente. Verifique os dados e tente novamente.', 'error');
-      console.error('Erro ao adicionar cliente:', err.response?.data);
-    }
-  };
+      setCurrentPage(1); 
+      showNotification('Cliente adicionado!', 'success');
 
-  const handleEditClick = (client: ClientData) => {
-    setEditingClient(client);
-    setIsFormVisible(true);
-    setFormErrors({}); 
+      // VERIFICAÇÃO DO LINK DO WHATSAPP (Backend configurado)
+      if (response.data.whatsapp_link) {
+        window.open(response.data.whatsapp_link, '_blank');
+      }
+      
+    } catch (err) { 
+      showNotification('Erro ao adicionar.', 'error'); 
+    }
   };
 
   const handleUpdateClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingClient) return;
-
-    const errors = validateForm(editingClient);
-    if (Object.keys(errors).length > 0) {
-      setFormErrors(errors);
-      showNotification('Preencha todos os campos obrigatórios.', 'error');
-      return;
-    }
-    setFormErrors({});
-
     try {
       await api.put(`/clientes/${editingClient.id}/`, editingClient);
       setEditingClient(null);
       setIsFormVisible(false);
-      fetchData(currentPage, searchTerm); // NOVO: Recarrega com a página e termo de busca atuais
-      showNotification('Cliente atualizado com sucesso!', 'success');
-    } catch (err: any) {
-      showNotification('Erro ao atualizar cliente. Verifique os dados e tente novamente.', 'error');
-      console.error('Erro ao atualizar cliente:', err.response?.data);
-    }
+      fetchData(currentPage, searchTerm);
+      showNotification('Cliente atualizado!', 'success');
+    } catch (err) { showNotification('Erro ao atualizar.', 'error'); }
   };
 
-  const handleDeleteClient = async (clientId: number) => {
-    if (window.confirm('Tem certeza de que deseja excluir este cliente?')) {
+  const handleDeleteClient = async (id: number) => {
+    if (window.confirm('Excluir cliente?')) {
       try {
-        await api.delete(`/clientes/${clientId}/`);
-        fetchData(currentPage, searchTerm); 
-        showNotification('Cliente excluído com sucesso!', 'success');
-      } catch (err: any) {
-        showNotification('Erro ao excluir cliente. Tente novamente mais tarde.', 'error');
-        console.error('Erro ao excluir cliente:', err.response?.data);
-      }
+        await api.delete(`/clientes/${id}/`);
+        fetchData(currentPage, searchTerm);
+        showNotification('Excluído.', 'success');
+      } catch (err) { showNotification('Erro ao excluir.', 'error'); }
     }
   };
-
-  const handleViewHistory = async (clientId: number) => {
-  try {
-    const response = await api.get(`/clientes/historico-servicos/${clientId}/`);
-    setServiceHistory(response.data);
-    setSelectedClientId(clientId);
-    showNotification('Histórico carregado com sucesso!', 'success');
-  } catch (err: any) {
-    showNotification('Erro ao carregar o histórico do cliente.', 'error');
-    console.error('Erro ao buscar histórico:', err.response?.data);
-  }
-};
-
-
-  // NOVO: Funções para navegar entre as páginas
-  const handleNextPage = () => {
-    if (nextPageUrl) {
-      setCurrentPage(prev => prev + 1);
-    }
-  };
-
-  const handlePreviousPage = () => {
-    if (previousPageUrl) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
-  if (loading) {
-    return <div className="p-4 text-center">Carregando clientes...</div>;
-  }
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-4">Gerenciamento de Clientes</h1>
+    <div className="p-6 bg-gray-50 min-h-screen font-sans">
       
-      <div className="mb-4">
+      <div className="flex justify-between items-center mb-8">
+        <div className="relative w-2/3">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center">
+            <svg className="h-5 w-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </span>
+          <input
+            type="text"
+            placeholder="Pesquisar por nome, CPF ou telefone..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-white focus:outline-none shadow-sm font-medium"
+          />
+        </div>
+
         <button
-          onClick={() => navigate(-1)}
-          className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+          onClick={() => { setIsFormVisible(!isFormVisible); setEditingClient(null); }}
+          className="bg-orange-500 rounded-full p-2.5 hover:bg-orange-600 shadow-md transition-colors cursor-pointer"
         >
-          Voltar
+          <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isFormVisible ? "M6 18L18 6M6 6l12 12" : "M12 4v16m8-8H4"} />
+          </svg>
         </button>
       </div>
-      
-      <div className="mb-4">
-        <input
-          type="text"
-          placeholder="Buscar clientes por nome ou email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-        />
-      </div>
-
-      <button
-        onClick={() => {
-          setIsFormVisible(!isFormVisible);
-          setEditingClient(null);
-          setFormErrors({});
-          setNewClient({ nome: '', telefone: '', email: '', cpf_cnpj: '', endereco: '' });
-        }}
-        className="mb-4 px-4 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 transition duration-150"
-      >
-        {isFormVisible ? 'Esconder Formulário' : 'Adicionar Novo Cliente'}
-      </button>
 
       {isFormVisible && (
-        <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-          <h2 className="text-xl font-bold mb-4">{editingClient ? 'Editar Cliente' : 'Nova Cliente'}</h2>
-          <form onSubmit={editingClient ? handleUpdateClient : handleAddClient} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Nome:</label>
-              <input type="text" name="nome" value={editingClient ? editingClient.nome : newClient.nome} onChange={handleInputChange} required className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.nome && <p className="text-red-500 text-xs mt-1">{formErrors.nome}</p>}
+        <div className="bg-white shadow-lg rounded-xl p-6 mb-8 border-t-4 border-orange-500">
+          <h2 className="text-xl font-bold mb-4 text-gray-800">{editingClient ? 'Editar Cliente' : 'Novo Cliente'}</h2>
+          <form onSubmit={editingClient ? handleUpdateClient : handleAddClient} className="grid grid-cols-2 gap-4">
+            <input type="text" name="nome" placeholder="Nome" value={(editingClient ? editingClient.nome : newClient.nome) || ''} onChange={handleInputChange} className="p-2 border rounded outline-none focus:ring-1 focus:ring-orange-500 font-bold" required />
+            <input type="text" name="telefone" placeholder="Telefone" value={(editingClient ? editingClient.telefone : newClient.telefone) || ''} onChange={handleInputChange} className="p-2 border rounded outline-none" required />
+            <input type="email" name="email" placeholder="Email" value={(editingClient ? editingClient.email : newClient.email) || ''} onChange={handleInputChange} className="p-2 border rounded outline-none" />
+            
+            {/* CPF COM MÁSCARA AO EDITAR - Mas aceita digitação nova */}
+            <input 
+              type="text" 
+              name="cpf_cnpj" 
+              placeholder="CPF/CNPJ" 
+              value={(editingClient ? editingClient.cpf_cnpj : newClient.cpf_cnpj) || ''} 
+              onChange={handleInputChange} 
+              onBlur={(e) => handleCPFBlur(e.target.value)} 
+              className="p-2 border rounded border-amber-200 outline-none focus:ring-1 focus:ring-orange-500" 
+            />
+
+            <input type="text" placeholder="CEP (Auto-preencher endereço)" onBlur={(e) => handleCEPBlur(e.target.value)} className="p-2 border rounded bg-blue-50 border-blue-200 outline-none cursor-text" />
+            <input type="text" name="endereco" placeholder="Endereço" value={(editingClient ? editingClient.endereco : newClient.endereco) || ''} onChange={handleInputChange} className="p-2 border rounded outline-none font-medium" />
+            
+            <div className="col-span-2 flex justify-end gap-2 mt-2">
+              <button type="button" onClick={() => setIsFormVisible(false)} className="px-4 py-2 bg-gray-400 text-white rounded font-bold uppercase text-xs cursor-pointer hover:bg-gray-500 transition-colors">Cancelar</button>
+              <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded font-bold uppercase text-xs cursor-pointer hover:bg-green-700 transition-colors">{editingClient ? 'Atualizar Dados' : 'Salvar Cliente'}</button>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Telefone:</label>
-              <input type="text" name="telefone" value={editingClient ? editingClient.telefone : newClient.telefone} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.telefone && <p className="text-red-500 text-xs mt-1">{formErrors.telefone}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Email:</label>
-              <input type="email" name="email" value={editingClient ? editingClient.email : newClient.email} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.email && <p className="text-red-500 text-xs mt-1">{formErrors.email}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">CPF/CNPJ:</label>
-              <input type="text" name="cpf_cnpj" value={editingClient ? editingClient.cpf_cnpj : newClient.cpf_cnpj} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.cpf_cnpj && <p className="text-red-500 text-xs mt-1">{formErrors.cpf_cnpj}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Endereço:</label>
-              <input type="text" name="endereco" value={editingClient ? editingClient.endereco : newClient.endereco} onChange={handleInputChange} className="mt-1 block w-full px-3 py-2 border rounded" />
-              {formErrors.endereco && <p className="text-red-500 text-xs mt-1">{formErrors.endereco}</p>}
-            </div>
-            <button type="submit" className="px-4 py-2 bg-green-600 text-white font-bold rounded hover:bg-green-700">
-              {editingClient ? 'Atualizar Cliente' : 'Salvar Cliente'}
-            </button>
-            {editingClient && (
-              <button
-                type="button"
-                onClick={() => setEditingClient(null)}
-                className="ml-2 px-4 py-2 bg-gray-500 text-white font-bold rounded hover:bg-gray-600"
-              >
-                Cancelar Edição
-              </button>
-            )}
           </form>
         </div>
       )}
 
-      <div className="bg-white shadow-md rounded-lg p-4">
-        <h2 className="text-xl font-bold mb-4">Lista de Clientes</h2>
-        {clients.length === 0 ? (
-          <p>Nenhum cliente cadastrado.</p>
-        ) : (
-          <ul>
-            {clients.map(client => (
-              <li key={client.id} className="border-b last:border-b-0 py-2 flex items-center justify-between">
-                <div>
-                  <p className="font-semibold">{client.nome}</p>
-                  <p className="text-sm text-gray-500">{client.email}</p>
-                </div>
-                <div>
-                  <button
-                    onClick={() => handleEditClick(client)}
-                    className="px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors"
-                  >
-                    Editar
-                  </button>
-                  <Link 
-                    to={`/clientes/${client.id}/historico`}
-                    className="ml-2 px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
-                  >
-                    Histórico
-                  </Link>
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Clientes</h2>
+        </div>
 
-                  <button
-                    onClick={() => handleDeleteClient(client.id)}
-                    className="ml-2 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                  >
-                    Excluir
-                  </button>
+        <div className="grid grid-cols-4 gap-4 pb-3 px-2 text-gray-700 font-bold text-sm text-center">
+          <div className="text-left">Nome</div>
+          <div>Contato</div>
+          <div>CPF/CNPJ (Protegido)</div>
+          <div className="text-right">Ações</div>
+        </div>
+        <div className="h-[1px] bg-black w-full mb-2"></div>
+
+        {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Buscando dados...</p> : (
+          <div className="divide-y divide-gray-50">
+            {clients.length > 0 ? clients.map(client => (
+              <div 
+                key={client.id} 
+                className="grid grid-cols-4 gap-4 items-center px-2 py-4 hover:bg-blue-50 transition-colors text-center"
+              >
+                <div className="text-gray-900 font-bold text-left uppercase text-[11px]">{client.nome}</div>
+                <div className="text-sm text-gray-600 font-bold">{client.telefone || client.email}</div>
+                
+                {/* AQUI ESTÁ A MÁSCARA NA LISTAGEM */}
+                <div className="text-sm text-gray-400 font-mono italic">
+                  {maskCPF(client.cpf_cnpj)}
                 </div>
-              </li>
-            ))}
-          </ul>
+
+                <div className="flex justify-end gap-6 font-black text-[10px] uppercase">
+                  <button onClick={() => { setEditingClient(client); setIsFormVisible(true); }} className="text-yellow-600 hover:text-yellow-700 cursor-pointer">Editar</button>
+                  <Link to={`/clientes/${client.id}/historico`} className="text-indigo-600 hover:text-indigo-700 cursor-pointer">Histórico</Link>
+                  <button onClick={() => handleDeleteClient(client.id)} className="text-red-300 hover:text-red-600 cursor-pointer">Excluir</button>
+                </div>
+              </div>
+            )) : <p className="text-center py-4 text-gray-400">Nenhum cliente encontrado.</p>}
+          </div>
         )}
-       
-        {/* NOVO: Controles de Paginação */}
-        <div className="flex justify-between items-center mt-4">
-          <button
-            onClick={handlePreviousPage}
+
+        <div className="flex justify-between items-center mt-10 pt-4 border-t border-gray-100 font-black uppercase text-xs">
+          <button 
+            onClick={() => setCurrentPage(p => p - 1)} 
             disabled={!previousPageUrl || loading}
-            className="px-4 py-2 bg-blue-600 text-white font-bold rounded disabled:bg-gray-400 hover:bg-blue-700 transition-colors"
+            className={`text-blue-600 transition-all ${!previousPageUrl || loading ? 'text-gray-300 cursor-default' : 'cursor-pointer hover:px-2'}`}
           >
-            Anterior
+            {"<"} Voltar
           </button>
-          <span className="text-gray-700">Página {currentPage}</span>
-          <button
-            onClick={handleNextPage}
+          
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Pág.</span>
+            <input 
+              type="text" 
+              value={inputPage}
+              onChange={(e) => setInputPage(e.target.value)}
+              onBlur={handleJumpPage}
+              onKeyDown={(e) => e.key === 'Enter' && handleJumpPage()}
+              className="w-10 h-7 text-center border-2 border-orange-100 rounded-lg text-gray-800 outline-none focus:border-orange-500 transition-all font-bold"
+            />
+            <span className="text-gray-400">de {totalPages}</span>
+          </div>
+
+          <button 
+            onClick={() => setCurrentPage(p => p + 1)} 
             disabled={!nextPageUrl || loading}
-            className="px-4 py-2 bg-blue-600 text-white font-bold rounded disabled:bg-gray-400 hover:bg-blue-700 transition-colors"
+            className={`text-blue-600 transition-all ${!nextPageUrl || loading ? 'text-gray-300 cursor-default' : 'cursor-pointer hover:px-2'}`}
           >
-            Próximo
+            Próximo {">"}
           </button>
         </div>
       </div>

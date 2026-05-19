@@ -1,18 +1,19 @@
 // src/pages/Login.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/api';
 import email from '../assets/email.svg';
 import cadeado from '../assets/cadeado.svg';
 import logo from '../assets/logo.png';
 import abelha from '../assets/abelha.png';
+import { Eye, EyeOff, UserPlus, Key } from 'lucide-react'; 
 
 // Importação dos Componentes (Modais)
 import ContactModal from '../components/ContactModal'; 
 import SuccessModal from '../components/SuccessModal'; 
 import EsqueciSenha from '../components/EsqueciSenha';
 import NovaSenha from '../components/NovaSenha';
-import SuccessSenhaModal from '../components/SuccessSenhaModal'; // Importado novo modal
+import SuccessSenhaModal from '../components/SuccessSenhaModal';
 
 interface LoginPageProps {
   setIsAuthenticated: (isAuthenticated: boolean) => void;
@@ -22,22 +23,44 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  
-  // Estados para controle de exibição dos Modais
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false); 
+
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
   const [isEsqueciSenhaOpen, setIsEsqueciSenhaOpen] = useState(false);
   const [isNovaSenhaOpen, setIsNovaSenhaOpen] = useState(false);
-  const [isSuccessSenhaOpen, setIsSuccessSenhaOpen] = useState(false); // Estado para sucesso de senha
+  const [isSuccessSenhaOpen, setIsSuccessSenhaOpen] = useState(false);
   
   const navigate = useNavigate();
 
-  // Função de Login Real
+  // Carrega apenas o E-mail se o "Lembrar de mim" estava ativo
+  useEffect(() => {
+    const savedUsername = localStorage.getItem('remembered_username');
+    const savedRemember = localStorage.getItem('remember_me') === 'true';
+
+    if (savedRemember && savedUsername) {
+      setUsername(savedUsername);
+      setRememberMe(true);
+    }
+  }, []);
+
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
     try {
       await login(username, password);
+
+      // Lógica de Persistência Apenas para o Login
+      if (rememberMe) {
+        localStorage.setItem('remembered_username', username);
+        localStorage.setItem('remember_me', 'true');
+        // A senha NÃO é salva aqui por segurança
+      } else {
+        localStorage.removeItem('remembered_username');
+        localStorage.setItem('remember_me', 'false');
+      }
+
       setIsAuthenticated(true);
       navigate('/');
     } catch (err: any) {
@@ -49,21 +72,16 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
     }
   };
 
-  // --- Funções de Fluxo dos Modais ---
-
-  // Fluxo Criar Conta: Contato -> SuccessModal (O que tem o aviãozinho/Send)
   const handleContactSuccess = () => {
     setIsContactOpen(false);
     setIsSuccessOpen(true);
   };
 
-  // Fluxo Esqueci Senha: E-mail -> Nova Senha
   const handleEsqueciSenhaSuccess = () => {
     setIsEsqueciSenhaOpen(false);
     setIsNovaSenhaOpen(true); 
   };
 
-  // Fluxo Final Nova Senha: Nova Senha -> SuccessSenhaModal (O que tem o Check)
   const handleNovaSenhaSuccess = () => {
     setIsNovaSenhaOpen(false);
     setIsSuccessSenhaOpen(true);
@@ -90,14 +108,27 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
       </div>
 
       {/* 2. Lado Direito: Formulário de Login */}
-      <div className="w-full lg:w-[35%] flex items-center justify-center bg-black p-8">
-        <div className="p-10 rounded-2xl shadow-2xl max-w-md w-full flex flex-col items-center">
-          
-          <img src={logo} alt="Logo" className="w-32 h-auto mb-6" />
-          
-          <h2 className="text-2xl font-bold mb-8 text-left text-amber-500 w-full">Bem-vindo</h2>
-          
-          <form onSubmit={handleLogin} className="space-y-5 w-full">
+<div className="w-full lg:w-[35%] flex items-center justify-center bg-black p-8">
+  <div className="p-10 rounded-2xl shadow-2xl max-w-md w-full flex flex-col items-center">
+    
+    {/* LOGO: Aumentada usando style para garantir que o CSS não bloqueie o tamanho */}
+  <img 
+  src={logo} 
+  alt="Logo" 
+  style={{
+    width: '280px', // Aumentei ainda mais para garantir
+    height: 'auto',
+    marginBottom: '-10px' // Use valor negativo se quiser "colar" no Bem-vindo
+  }}
+  className="object-contain" // Remova a classe "logo" daqui se houver
+/>
+    
+    {/* TÍTULO: Agora centralizado para alinhar com a logo maior */}
+    <h2 className="text-3xl font-bold mb-8 text-left text-amber-500 w-full">
+      Bem-vindo
+    </h2>
+    
+    <form onSubmit={handleLogin} className="space-y-5 w-full">
             <div className='relative'>
               {!username && (
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -105,7 +136,7 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
                 </div>
               )}
               <input 
-                placeholder='Login'
+                placeholder='E-mail'
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -122,12 +153,19 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
               )}
               <input
                 placeholder='Senha'
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className={`${!password ? 'pl-10' : 'px-3'} block w-full py-3 border bg-white border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-500 sm:text-sm text-black placeholder-black`}
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-amber-500 transition-colors"
+              >
+                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+              </button>
             </div>
 
             <div className="flex items-center justify-between w-full">
@@ -136,6 +174,8 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-amber-500 focus:ring-amber-500 border-gray-300 rounded cursor-pointer"
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-xs text-gray-400 cursor-pointer">
@@ -162,52 +202,44 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
               Entrar
             </button>
 
-            <p className='mt-6 text-center text-xs text-gray-500'>
-              Não tem conta? <span 
-                onClick={() => setIsContactOpen(true)} 
-                className='font-semibold text-amber-500 cursor-pointer hover:underline decoration-amber-500'
+            <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-800 w-full gap-2">
+              <button
+                type="button"
+                onClick={() => setIsContactOpen(true)}
+                className="flex flex-col items-center flex-1 group transition-all"
               >
-                Entre em contato com o <br/>desenvolvedor
-              </span>
-            </p>
+                <div className="p-2 rounded-lg bg-gray-900 group-hover:bg-amber-500/10 mb-2 transition-colors">
+                  <UserPlus size={18} className="text-amber-500" />
+                </div>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 group-hover:text-amber-500 text-center leading-tight">
+                  Falar com <br/> Desenvolvedor
+                </span>
+              </button>
+
+              <div className="w-[1px] h-10 bg-gray-800" />
+
+              <button
+                type="button"
+                onClick={() => navigate('/cadastro-token')}
+                className="flex flex-col items-center flex-1 group transition-all"
+              >
+                <div className="p-2 rounded-lg bg-gray-900 group-hover:bg-amber-500/10 mb-2 transition-colors">
+                  <Key size={18} className="text-amber-500" />
+                </div>
+                <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 group-hover:text-amber-500 text-center leading-tight">
+                  Finalizar <br/> Cadastro
+                </span>
+              </button>
+            </div>
           </form>
         </div>
       </div>
 
-      {/* 3. Renderização dos Modais */}
-      
-      {/* Modal Criar Conta */}
-      <ContactModal 
-        isOpen={isContactOpen} 
-        onClose={() => setIsContactOpen(false)} 
-        onSuccess={handleContactSuccess} 
-      />
-
-      {/* Modal E-mail de Recuperação */}
-      <EsqueciSenha 
-        isOpen={isEsqueciSenhaOpen}
-        onClose={() => setIsEsqueciSenhaOpen(false)}
-        onSuccess={handleEsqueciSenhaSuccess}
-      />
-
-      {/* Modal Redefinição de Senha */}
-      <NovaSenha
-        isOpen={isNovaSenhaOpen}
-        onClose={() => setIsNovaSenhaOpen(false)}
-        onSuccess={handleNovaSenhaSuccess}
-      />
-
-      {/* Modal Sucesso de Contato (Avião) */}
-      <SuccessModal 
-        isOpen={isSuccessOpen} 
-        onClose={() => setIsSuccessOpen(false)} 
-      />
-
-      {/* Modal Sucesso de Senha (Check) */}
-      <SuccessSenhaModal 
-        isOpen={isSuccessSenhaOpen} 
-        onClose={() => setIsSuccessSenhaOpen(false)} 
-      />
+      <ContactModal isOpen={isContactOpen} onClose={() => setIsContactOpen(false)} onSuccess={handleContactSuccess} />
+      <EsqueciSenha isOpen={isEsqueciSenhaOpen} onClose={() => setIsEsqueciSenhaOpen(false)} onSuccess={handleEsqueciSenhaSuccess} />
+      <NovaSenha isOpen={isNovaSenhaOpen} onClose={() => setIsNovaSenhaOpen(false)} onSuccess={handleNovaSenhaSuccess} />
+      <SuccessModal isOpen={isSuccessOpen} onClose={() => setIsSuccessOpen(false)} />
+      <SuccessSenhaModal isOpen={isSuccessSenhaOpen} onClose={() => setIsSuccessSenhaOpen(false)} />
 
     </div>
   );

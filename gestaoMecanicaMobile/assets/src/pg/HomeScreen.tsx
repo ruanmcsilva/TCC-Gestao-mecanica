@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
     StyleSheet, 
     View, 
@@ -7,169 +7,227 @@ import {
     SafeAreaView, 
     StatusBar,
     ScrollView,
-    Dimensions,
-    TextInput,
-    Image
+    RefreshControl,
+    ActivityIndicator
 } from 'react-native';
 import { 
-    Home, 
-    Users, 
-    Motorbike, 
-    HandPlatter, 
-    Cog, 
-    Car, 
-    Clock, 
-    CheckCircle2, 
-    ChevronRight,
-    UserCircle,
-    Search // Ícone de busca
+    Menu,
+    Wrench,
+    PlayCircle,
+    AlertTriangle,
+    Layers,
+    PlusCircle
 } from 'lucide-react-native';
+import api from '../config/api';
 
-const { width } = Dimensions.get('window');
+export default function HomeScreen({ navigation }: any) {
+    const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    
+    // Estados para os contadores do Dashboard
+    const [stats, setStats] = useState({
+        emAndamento: 0,
+        estoqueBaixo: 0,
+        totalItens: 0
+    });
 
-export default function HomeScreen() {
-    const [activeTab, setActiveTab] = useState('home');
-    const activeColor = '#F97316'; 
+const fetchDashboardData = useCallback(async () => {
+    try {
+        // Usamos o parâmetro 'pagination=false' ou um limite muito alto.
+        // A maioria das APIs Django configuradas com rest_framework aceita o limite.
+        const [servicosRes, pecasRes] = await Promise.all([
+            api.get('/servicos/?page_size=1000&exclude_balcao=true'), 
+            api.get('/pecas/?page_size=1000')
+        ]);
 
-    // Logo (usando a que você já tem ou um placeholder para o print)
-    const myLogo = require('../img/logo.png');
+        // Verificamos se os dados vieram dentro de 'results' ou direto no array
+        const servicos = Array.isArray(servicosRes.data) ? servicosRes.data : servicosRes.data.results || [];
+        const pecas = Array.isArray(pecasRes.data) ? pecasRes.data : pecasRes.data.results || [];
+
+        // Filtro para "Em Andamento" ignorando maiúsculas/minúsculas
+        const emAndamento = servicos.filter((s: any) => {
+            const status = s.status ? s.status.toLowerCase() : '';
+            return status === 'em_andamento' || status === 'andamento';
+        }).length;
+
+        // Filtro de estoque baixo (menor ou igual a 5 unidades)
+        const estoqueBaixo = pecas.filter((p: any) => p.quantidade_em_estoque <= 5).length;
+        
+        // Total de itens agora deve mostrar os 12 (ou quantos tiverem no banco)
+        const totalItens = pecas.length; 
+
+        setStats({
+            emAndamento,
+            estoqueBaixo,
+            totalItens
+        });
+    } catch (error) {
+        console.error("Erro ao carregar dashboard:", error);
+    } finally {
+        setLoading(false);
+        setRefreshing(false);
+    }
+}, []);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchDashboardData();
+    };
 
     return (
         <SafeAreaView style={styles.background}>
-            <StatusBar barStyle="dark-content" backgroundColor="#f5f5f5" />
+            <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
             
-            {/* Header com Logo à Esquerda e Perfil à Direita */}
             <View style={styles.header}>
-                <View style={styles.headerLeft}>
-                    <Image source={myLogo} style={styles.miniLogo} />
-
-                </View>
-                <TouchableOpacity style={styles.profileBtn}>
-                    <UserCircle color="black" size={40} strokeWidth={1.5} />
+                <TouchableOpacity style={styles.menuBtn} onPress={() => navigation.openDrawer()}>
+                    <Menu color="black" size={32} strokeWidth={1.5} />
                 </TouchableOpacity>
+                <Text style={styles.headerTitle}>DASHBOARD</Text>
+                <View style={{ width: 32 }} />
             </View>
 
-            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent} 
+                showsVerticalScrollIndicator={false}
+                refreshControl={
+                    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} color="#F97316" />
+                }
+            >
                 
-                {/* BARRA DE PESQUISA LARANJA */}
-                <View style={styles.searchContainer}>
-                    <Search color="#9CA3AF" size={20} style={styles.searchIcon} />
-                    <TextInput 
-                        placeholder="Pesquisa" 
-                        placeholderTextColor="#9CA3AF" 
-                        style={styles.searchInput}
-                    />
-                </View>
+                {loading && !refreshing ? (
+                    <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 20 }} />
+                ) : (
+                    <>
+                        {/* CARDS DE STATUS */}
+                        <View style={styles.statusCardsContainer}>
+                            
+                            {/* Em Andamento */}
+                            <View style={[styles.statusCard, { borderLeftColor: '#F97316' }]}>
+                                <View style={styles.statusHeader}>
+                                    <PlayCircle size={18} color="#F97316" />
+                                    <Text style={styles.statusTitle}>EM ANDAMENTO</Text>
+                                </View>
+                                <Text style={styles.statusValue}>{stats.emAndamento}</Text>
+                            </View>
 
-                {/* CARDS DE ALERTA (PEÇAS E SERVIÇOS) */}
-                <View style={styles.alertCardsRow}>
-                    <View style={styles.alertCard}>
-                        <Text style={styles.alertTitle}>Peças com estoque baixo</Text>
-                        <Text style={styles.alertValue}>0</Text>
-                    </View>
-                    <View style={styles.alertCard}>
-                        <Text style={styles.alertTitle}>Serviço em andamento</Text>
-                        <Text style={styles.alertValue}>0</Text>
-                    </View>
-                </View>
+                            {/* Estoque Baixo */}
+                            <View style={[styles.statusCard, { borderLeftColor: '#EF4444' }]}>
+                                <View style={styles.statusHeader}>
+                                    <AlertTriangle size={18} color={stats.estoqueBaixo > 0 ? '#EF4444' : '#D1D5DB'} />
+                                    <Text style={styles.statusTitle}>ESTOQUE CRÍTICO</Text>
+                                </View>
+                                <Text style={[styles.statusValue, { color: stats.estoqueBaixo > 0 ? '#EF4444' : '#111827' }]}>
+                                    {stats.estoqueBaixo}
+                                </Text>
+                            </View>
 
-                <Text style={styles.sectionTitle}>Serviços Recentes</Text>
-                
-                <TouchableOpacity style={styles.osCard}>
-                    <View style={styles.osInfo}>
-                        <Text style={styles.carModel}>Fiat Uno - ABC1234</Text>
-                        <Text style={styles.clientName}>Cliente: Ruan Silva</Text>
-                        <View style={styles.statusBadge}>
-                            <Text style={styles.statusText}>EM MANUTENÇÃO</Text>
+                            {/* Total de Itens */}
+                            <View style={[styles.statusCard, { borderLeftColor: '#2563EB' }]}>
+                                <View style={styles.statusHeader}>
+                                    <Layers size={18} color="#2563EB" />
+                                    <Text style={styles.statusTitle}>TOTAL DE ITENS</Text>
+                                </View>
+                                <Text style={[styles.statusValue, { color: '#1D4ED8' }]}>{stats.totalItens}</Text>
+                            </View>
+
                         </View>
-                    </View>
-                    <ChevronRight color="#9CA3AF" size={24} />
-                </TouchableOpacity>
-            </ScrollView>
 
-            {/* NAVBAR PRETA */}
-            <View style={styles.navBarContainer}>
-                <View style={styles.navBar}>
-                    <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('home')}>
-                        <Home color={activeTab === 'home' ? activeColor : 'white'} size={24} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('users')}>
-                        <Users color={activeTab === 'users' ? activeColor : 'white'} size={24} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.addBtn} onPress={() => setActiveTab('Motorbike')}>
-                        <Motorbike color={activeTab === 'Motorbike' ? activeColor : 'white'} size={30} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('servicos')}>
-                        <HandPlatter color={activeTab === 'servicos' ? activeColor : 'white'} size={24} />
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.navItem} onPress={() => setActiveTab('config')}>
-                        <Cog color={activeTab === 'config' ? activeColor : 'white'} size={24} />
-                    </TouchableOpacity>
-                </View>
-            </View>
+                        {/* AÇÕES PRINCIPAIS */}
+                       <View style={styles.actionsContainer}>
+                        {/* NOVA O.S. - Agora aponta direto para o Scanner primeiro */}
+                        <TouchableOpacity
+                            style={styles.actionCard} 
+                            onPress={() => navigation.navigate('ScannerPlaca')} // Único caminho: Scanner
+                        >
+                            <View style={[styles.iconContainer, { backgroundColor: '#F97316' }]}>
+                                <Wrench size={28} color="white" />
+                            </View>
+                            <Text style={styles.actionTitle}>Nova O.S.</Text>
+                            <Text style={styles.actionDesc}>Iniciar serviço via QR Code ou manual.</Text>
+                            
+                            <View style={styles.actionFooter}>
+                                <PlusCircle size={16} color="#EA580C" />
+                                <Text style={[styles.actionFooterText, { color: '#EA580C' }]}>COMEÇAR AGORA</Text>
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                    </>
+                )}
+                
+                <Text style={styles.footerText}>SISTEMA SPACE MOTOS v1.0</Text>
+            </ScrollView>
         </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
-    background: { flex: 1, backgroundColor: '#f5f5f5' },
-    header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 20, paddingTop: 50 },
-    headerLeft: { flexDirection: 'row', alignItems: 'center' },
-    miniLogo: { width: 50, height: 50, borderRadius: 25, marginRight: 10 },
-    headerTexts: { justifyContent: 'center' },
-    welcomeText: { fontSize: 12, color: '#4D7C0F' },
-    appName: { fontSize: 18, fontWeight: 'bold', color: '#1A2E05' },
-    
-    // ESTILO DA PESQUISA
-    searchContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FFF',
-        borderWidth: 2,
-        borderColor: '#F97316', // Laranja
-        borderRadius: 12, // Aproximadamente 20% de borda arredondada
-        paddingHorizontal: 15,
-        marginBottom: 20,
-        height: 50,
+    background: { flex: 1, backgroundColor: '#f9fafb' },
+    header: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        paddingHorizontal: 20, 
+        paddingTop: 20, 
+        paddingBottom: 10 
     },
-    searchIcon: { marginRight: 10 },
-    searchInput: { flex: 1, color: '#1A2E05', fontSize: 16 },
+    headerTitle: { fontSize: 14, fontWeight: '900', color: '#111827', letterSpacing: 2 },
+    menuBtn: { padding: 5 },
 
-    // ESTILO DOS CARDS DE ALERTA
-    alertCardsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 25 },
-    alertCard: {
+    scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
+
+    statusCardsContainer: { marginBottom: 25 },
+    statusCard: {
         backgroundColor: '#FFF',
-        width: (width - 50) / 2,
         padding: 15,
-        borderRadius: 15,
+        borderRadius: 12,
+        marginBottom: 10,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 5,
+        borderLeftWidth: 4,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+    },
+    statusHeader: { flexDirection: 'row', alignItems: 'center' },
+    statusTitle: { fontSize: 10, fontWeight: '900', color: '#6B7280', marginLeft: 10, letterSpacing: 1 },
+    statusValue: { fontSize: 24, fontWeight: '900', color: '#111827' },
+
+    actionsContainer: { marginBottom: 20 },
+    actionCard: {
+        backgroundColor: '#FFF',
+        padding: 25,
+        borderRadius: 24,
+        marginBottom: 20,
         elevation: 3,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        borderWidth: 1,
+        borderColor: '#F3F4F6'
+    },
+    iconContainer: {
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 15,
+        elevation: 5,
         shadowColor: '#000',
         shadowOpacity: 0.1,
         shadowRadius: 5,
     },
-    alertTitle: { fontSize: 13, fontWeight: 'bold', color: '#F97316', marginBottom: 8, textAlign: 'center' },
-    alertValue: { fontSize: 22, fontWeight: 'bold', color: '#000', textAlign: 'center' },
+    actionTitle: { fontSize: 24, fontWeight: '900', color: '#111827', textTransform: 'uppercase', letterSpacing: -0.5, marginBottom: 8 },
+    actionDesc: { fontSize: 14, color: '#6B7280', fontWeight: '500', marginBottom: 25, lineHeight: 20 },
+    actionFooter: { flexDirection: 'row', alignItems: 'center' },
+    actionFooterText: { fontSize: 12, fontWeight: '900', letterSpacing: 1, marginLeft: 5 },
+    footerText: { textAlign: 'center', fontSize: 10, fontWeight: '900', color: '#D1D5DB', letterSpacing: 3, marginTop: 20 },
 
-    scrollContent: { paddingHorizontal: 20, paddingBottom: 150 },
-    sectionTitle: { fontSize: 18, fontWeight: 'bold', color: '#1A2E05', marginBottom: 15 },
-    osCard: { backgroundColor: '#FFF', borderRadius: 15, padding: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, borderLeftWidth: 5, borderLeftColor: '#65A30D' },
-    osInfo: { flex: 1 },
-    carModel: { fontSize: 16, fontWeight: 'bold', color: '#1A2E05' },
-    clientName: { fontSize: 14, color: '#6B7280', marginVertical: 4 },
-    statusBadge: { backgroundColor: '#FEF9C3', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 5 },
-    statusText: { fontSize: 10, fontWeight: 'bold', color: '#854D0E' },
 
-    navBarContainer: { position: 'absolute', bottom: 40, left: 0, right: 0, alignItems: 'center' },
-    navBar: {
-        flexDirection: 'row',
-        backgroundColor: 'black',
-        width: width * 0.9,
-        height: 70,
-        borderRadius: 35,
-        justifyContent: 'space-evenly',
-        alignItems: 'center',
-        elevation: 10,
-    },
-    navItem: { alignItems: 'center', justifyContent: 'center' },
-    addBtn: { width: 60, height: 60, justifyContent: 'center', alignItems: 'center' }
 });

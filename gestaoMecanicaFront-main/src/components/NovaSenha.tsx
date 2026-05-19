@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { X, CircleCheck, Circle } from 'lucide-react';
+// Adicionamos os ícones Eye e EyeOff
+import { X, CircleCheck, Circle, Eye, EyeOff } from 'lucide-react';
 import api from '../api/api'; // Certifique-se que o caminho está correto
 
 interface NovaSenhaProps {
@@ -13,6 +14,10 @@ const NovaSenha: React.FC<NovaSenhaProps> = ({ isOpen, onClose, onSuccess }) => 
   const [senha, setSenha] = useState('');
   const [confirmaSenha, setConfirmaSenha] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Estados para controlar a visibilidade das senhas
+  const [showSenha, setShowSenha] = useState(false);
+  const [showConfirma, setShowConfirma] = useState(false);
 
   const [validations, setValidations] = useState({
     minChars: false,
@@ -40,6 +45,7 @@ const NovaSenha: React.FC<NovaSenhaProps> = ({ isOpen, onClose, onSuccess }) => 
 
     // Verifica validações locais antes de mandar pro back
     if (!Object.values(validations).every(v => v)) {
+      // Idealmente, usar a notificação context aqui também se possível
       alert("A senha não atende aos requisitos de segurança.");
       return;
     }
@@ -59,6 +65,12 @@ const NovaSenha: React.FC<NovaSenhaProps> = ({ isOpen, onClose, onSuccess }) => 
       });
 
       console.log("Senha redefinida com sucesso!");
+      // Limpa os estados ao fechar com sucesso
+      setCodigo('');
+      setSenha('');
+      setConfirmaSenha('');
+      setShowSenha(false);
+      setShowConfirma(false);
       onSuccess(); // Abre o modal de sucesso final (o do check)
     } catch (error: any) {
       console.error("Erro ao redefinir senha:", error);
@@ -97,24 +109,50 @@ const NovaSenha: React.FC<NovaSenhaProps> = ({ isOpen, onClose, onSuccess }) => 
             />
           </div>
 
+          {/* Campo Nova Senha com Olhinho */}
           <div>
             <label className="block text-amber-500 text-sm font-bold mb-1">Nova Senha</label>
-            <input 
-              type="password" placeholder="Nova senha" value={senha} onChange={(e) => setSenha(e.target.value)}
-              className="w-full py-2.5 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 text-black outline-none transition-all"
-              style={{ boxShadow: '0 4px 6px -2px rgba(0, 0, 0, 0.1)' }}
-              required
-            />
+            <div className="relative">
+              <input 
+                type={showSenha ? "text" : "password"} 
+                placeholder="Nova senha" 
+                value={senha} 
+                onChange={(e) => setSenha(e.target.value)}
+                className="w-full py-2.5 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 text-black outline-none transition-all pr-12"
+                style={{ boxShadow: '0 4px 6px -2px rgba(0, 0, 0, 0.1)' }}
+                required
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowSenha(!showSenha)} 
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors"
+              >
+                {showSenha ? <EyeOff size={19} /> : <Eye size={19} />}
+              </button>
+            </div>
           </div>
 
+          {/* Campo Confirma senha com Olhinho */}
           <div>
             <label className="block text-amber-500 text-sm font-bold mb-1">Confirma senha</label>
-            <input 
-              type="password" placeholder="Repita a senha" value={confirmaSenha} onChange={(e) => setConfirmaSenha(e.target.value)}
-              className="w-full py-2.5 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 text-black outline-none transition-all"
-              style={{ boxShadow: '0 4px 6px -2px rgba(0, 0, 0, 0.1)' }}
-              required
-            />
+            <div className="relative">
+              <input 
+                type={showConfirma ? "text" : "password"} 
+                placeholder="Repita a senha" 
+                value={confirmaSenha} 
+                onChange={(e) => setConfirmaSenha(e.target.value)}
+                className="w-full py-2.5 px-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 text-black outline-none transition-all pr-12"
+                style={{ boxShadow: '0 4px 6px -2px rgba(0, 0, 0, 0.1)' }}
+                required
+              />
+              <button 
+                type="button" 
+                onClick={() => setShowConfirma(!showConfirma)} 
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-amber-500 transition-colors"
+              >
+                {showConfirma ? <EyeOff size={19} /> : <Eye size={19} />}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-1 py-2">

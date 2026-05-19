@@ -37,6 +37,7 @@ class Convite(models.Model):
     token = models.UUIDField(default=uuid.uuid4, unique=True)
     autorizado = models.BooleanField(default=False)
     criado_em = models.DateTimeField(auto_now_add=True)
+    nivel_acesso = models.CharField(max_length=20, blank=True, null=True)
 
     def __str__(self):
         return f"{self.email} - {'Autorizado' if self.autorizado else 'Pendente'}"
@@ -139,3 +140,29 @@ class FotoServico(models.Model):
 
     def __str__(self):
         return f"Foto de Serviço #{self.servico.id}"
+    
+
+#AGENDAMENTO
+class Agendamento(models.Model):
+    STATUS_CHOICES = [
+        ('PENDENTE', 'Pendente'),
+        ('CONFIRMADO', 'Confirmado'),
+        ('CANCELADO', 'Cancelado'),
+        ('CONCLUIDO', 'Concluído'),
+    ]
+
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='agendamentos')
+    moto = models.ForeignKey(Moto, on_delete=models.CASCADE, related_name='agendamentos')
+    data = models.DateField()
+    hora = models.TimeField()
+    descricao_problema = models.TextField(blank=True, null=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDENTE')
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Garante que não existam dois agendamentos no mesmíssimo horário
+        unique_together = ['data', 'hora']
+        ordering = ['data', 'hora']
+
+    def __str__(self):
+        return f"{self.data} {self.hora} - {self.cliente.nome}"
