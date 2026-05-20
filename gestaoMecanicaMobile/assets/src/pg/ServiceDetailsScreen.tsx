@@ -1,29 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Linking } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Save, Plus, Camera, Printer, CreditCard, CheckCircle } from 'lucide-react-native';
+import { ArrowLeft, Save, Plus, Camera, Printer, CreditCard } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../config/api';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ServiceDetailsScreen({ route, navigation }: any) {
-  // 1. Pegamos o serviço dos parâmetros ou um objeto vazio
+
   const { service: initialService } = route.params || {};
   
-  // 2. Ajuste do Loading: Se não tem ID (Nova OS), não precisa carregar dados do banco
+ 
   const [loading, setLoading] = useState(initialService?.id ? true : false);
   const [uploading, setUploading] = useState(false);
   const [service, setService] = useState<any>(initialService || null);
   const [parts, setParts] = useState<any[]>([]);
   const [photos, setPhotos] = useState<any[]>([]);
   
-  // Estados dos campos
   const [description, setDescription] = useState(initialService?.descricao || '');
   const [laborCost, setLaborCost] = useState(initialService?.valor_mao_de_obra?.toString() || '0');
   const [status, setStatus] = useState(initialService?.status || 'PENDENTE');
   const [km, setKm] = useState(initialService?.kilometragem?.toString() || '0');
 
   const fetchServiceData = async () => {
-    // Se não tem ID, apenas paramos o loading e saímos
     if (!initialService?.id) {
         setLoading(false);
         return;
@@ -137,12 +138,10 @@ export default function ServiceDetailsScreen({ route, navigation }: any) {
       };
 
       if (service?.id) {
-        // EDIÇÃO (PATCH)
         await api.patch(`/servicos/${service.id}/`, payload);
         Alert.alert("Sucesso", "Ordem de Serviço atualizada!");
       } else {
-        // CRIAÇÃO (POST)
-        // Nota: Garanta que o backend aceite criação apenas com esses campos ou adicione cliente/moto
+
         const response = await api.post(`/servicos/`, payload);
         setService(response.data);
         Alert.alert("Sucesso", "Nova Ordem de Serviço criada!");
@@ -153,20 +152,40 @@ export default function ServiceDetailsScreen({ route, navigation }: any) {
     }
   };
 
-  const handlePrint = async () => {
-    if (!service?.id) return;
-    try {
-      const url = `http://192.168.0.123:8000/api/v1/servicos/${service.id}/imprimir_os/`;
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-      } else {
-        Alert.alert("Erro", "Não foi possível abrir o link de impressão.");
+const handlePrint = async () => {
+  if (!service?.id) return;
+  
+  try {
+    const url = `${api.defaults.baseURL}/servicos/${service.id}/imprimir_os/`;
+    const fileUri = `${FileSystem.documentDirectory}OS_${service.id}.pdf`;
+    const token = await AsyncStorage.getItem('@app_token');
+
+    const downloadResult = await FileSystem.downloadAsync(url, fileUri, {
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       }
-    } catch (error) {
-      Alert.alert("Erro", "Falha ao conectar com o servidor.");
+    });
+
+    if (downloadResult.status !== 200) {
+      throw new Error(`Falha ao baixar PDF. Status ${downloadResult.status}`);
     }
-  };
+
+    const canShare = await Sharing.isAvailableAsync();
+    if (canShare) {
+      await Sharing.shareAsync(downloadResult.uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: `Ordem de Serviço ${service.id}`,
+        UTI: 'com.adobe.pdf',
+      });
+    } else {
+      Alert.alert("Erro", "O compartilhamento não está disponível neste dispositivo.");
+    }
+
+  } catch (error) {
+    console.error(error);
+    Alert.alert("Erro", "Falha ao baixar e abrir o PDF da Ordem de Serviço.");
+  }
+};
 
   if (loading) return <ActivityIndicator size="large" color="#EE6B22" style={{ flex: 1 }} />;
 
@@ -176,7 +195,6 @@ export default function ServiceDetailsScreen({ route, navigation }: any) {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <ArrowLeft color="black" size={28} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{service?.id ? `OS #${service.id}` : 'Nova OS'}</Text>
         <TouchableOpacity onPress={handlePrint} disabled={!service?.id}>
           <Printer color={service?.id ? "#4B5563" : "#D1D5DB"} size={24} />
         </TouchableOpacity>
@@ -231,7 +249,7 @@ export default function ServiceDetailsScreen({ route, navigation }: any) {
                 {photos.map(p => (
                   <Image 
                     key={p.id}
-                    source={{ uri: p.foto.startsWith('http') ? p.foto : `http://192.168.0.123:8000${p.foto}` }} 
+                    source={{ uri: p.foto.startsWith('http') ? p.foto : `${api.defaults.baseURL?.replace('/api/v1', '')}${p.foto}` }} 
                     style={styles.photoThumb} 
                   />
                 ))}

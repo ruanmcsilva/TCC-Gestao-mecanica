@@ -24,10 +24,10 @@ export default function SolicitacoesScreen() {
     }
   };
 
-  const autorizar = async (id: number) => {
+  const autorizar = async (id: number, nivelAcesso: 'admin' | 'funcionario') => {
     try {
-      await api.post(`autorizar-acesso/${id}/`);
-      alert("Acesso autorizado! O link de cadastro foi enviado por e-mail.");
+      await api.post(`autorizar-acesso/${id}/`, { nivel_acesso: nivelAcesso });
+      alert(`Acesso autorizado como ${nivelAcesso}! O link de cadastro foi enviado por e-mail.`);
       carregarConvites(); // Atualiza a lista
     } catch (error) {
       alert("Erro ao autorizar usuário.");
@@ -72,12 +72,20 @@ export default function SolicitacoesScreen() {
                 </td>
                 <td className="p-4 text-right">
                   {!c.autorizado && (
-                    <button
-                      onClick={() => autorizar(c.id)}
-                      className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all"
-                    >
-                      <Check size={16} /> Autorizar
-                    </button>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => autorizar(c.id, 'funcionario')}
+                        className="inline-flex items-center gap-1 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      >
+                        <Check size={14} /> Funcionário
+                      </button>
+                      <button
+                        onClick={() => autorizar(c.id, 'admin')}
+                        className="inline-flex items-center gap-1 bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                      >
+                        <UserCheck size={14} /> Admin
+                      </button>
+                    </div>
                   )}
                 </td>
               </tr>

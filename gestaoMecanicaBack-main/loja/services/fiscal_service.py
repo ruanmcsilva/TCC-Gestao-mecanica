@@ -1,14 +1,18 @@
-import requests
 from django.conf import settings
-from focusnfe import FocusNFe
+
+try:
+    from focusnfe import FocusNFe
+except ImportError:
+    FocusNFe = None
 
 class FiscalService:
     def __init__(self):
-        # Inicializa a biblioteca com os dados do settings.py
-        self.client = FocusNFe(
-            token=settings.FOCUSNFE_TOKEN,
-            ambiente=settings.FOCUSNFE_AMBIENTE
-        )
+        self.client = None
+        if FocusNFe is not None:
+            self.client = FocusNFe(
+                token=settings.FOCUSNFE_TOKEN,
+                ambiente=settings.FOCUSNFE_AMBIENTE
+            )
 
     def emitir_nfc_e(self, venda):
         """
@@ -17,7 +21,7 @@ class FiscalService:
         # 1. Preparamos os itens da venda (Peças)
         items = []
         # Buscamos os itens vinculados a esse serviço/venda
-        itens_servico = venda.itens.all() 
+        itens_servico = venda.itens_servico_peca.all()
 
         for i, item in enumerate(itens_servico, start=1):
             items.append({

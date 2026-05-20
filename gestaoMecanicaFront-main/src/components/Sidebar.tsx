@@ -12,8 +12,11 @@ import {
   Cog,
   LogOut,
   FileText,
-  Settings // Importado para Configurações
+  Settings,
+  Clock // Importado para Histórico
 } from 'lucide-react';
+
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   setIsAuthenticated: (auth: boolean) => void;
@@ -22,6 +25,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ setIsAuthenticated }) => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
+  const { isAdmin } = useAuth();
 
   const handleLogout = () => {
     logout(); 
@@ -31,14 +35,15 @@ const Sidebar: React.FC<SidebarProps> = ({ setIsAuthenticated }) => {
   };
 
   const menuItems = [
-    { to: "/", label: "Início", icon: Home },
-    { to: "/clientes", label: "Clientes", icon: Users },
-    { to: "/motos", label: "Motos", icon: Bike },
-    { to: "/servicos", label: "Serviços", icon: HandPlatter },
-    { to: "/pecas", label: "Peças", icon: Cog },
-    { to: "/relatorios", label: "Relatórios", icon: FileText },
-    { to: "/configuracoes", label: "Configurações", icon: Settings }, // CORRIGIDO
-  ];
+    { to: "/", label: "Início", icon: Home, show: true },
+    { to: "/clientes", label: "Clientes", icon: Users, show: true },
+    { to: "/motos", label: "Motos", icon: Bike, show: true },
+    { to: "/servicos", label: "Serviços", icon: HandPlatter, show: true },
+    { to: "/pecas", label: "Peças", icon: Cog, show: true },
+    { to: "/relatorios", label: "Relatórios", icon: FileText, show: isAdmin },
+    { to: "/historico", label: "Histórico", icon: Clock, show: !isAdmin },
+    { to: "/configuracoes", label: "Configurações", icon: Settings, show: true },
+  ].filter(item => item.show);
 
   const baseClass = "flex items-center py-2 px-4 rounded transition duration-200 mb-2";
 

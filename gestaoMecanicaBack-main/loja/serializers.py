@@ -53,11 +53,13 @@ class ServicoSerializer(serializers.ModelSerializer):
     fotos = FotoServicoSerializer(many=True, read_only=True)
     cliente_nome = serializers.CharField(source='cliente.nome', read_only=True)
     responsavel_nome = serializers.CharField(source='responsavel.username', read_only=True)
+    moto_placa = serializers.CharField(source='moto.placa', read_only=True)
+    moto_modelo = serializers.CharField(source='moto.modelo', read_only=True)
 
     class Meta:
         model = Servico
         fields = [
-            'id', 'cliente','cliente_nome', 'moto', 'descricao', 'data_inicio', 'data_fim',
+            'id', 'cliente','cliente_nome', 'moto', 'moto_placa', 'moto_modelo', 'descricao', 'data_inicio', 'data_fim',
             'status', 'valor_mao_de_obra', 'observacoes', 'responsavel','responsavel_nome',
             'kilometragem', 'valor_total_pecas', 'valor_total_servico', 'itens_servico_peca', 'fotos'
         ]

@@ -162,7 +162,7 @@ const handleAddClient = async (e: React.FormEvent) => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+    <div className={`h-full flex flex-col font-sans ${isFormVisible ? 'overflow-y-auto' : 'overflow-hidden'}`}>
       
       <div className="flex justify-between items-center mb-8">
         <div className="relative w-2/3">
@@ -220,7 +220,7 @@ const handleAddClient = async (e: React.FormEvent) => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Clientes</h2>
         </div>
@@ -234,7 +234,7 @@ const handleAddClient = async (e: React.FormEvent) => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Buscando dados...</p> : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 flex-grow pr-2">
             {clients.length > 0 ? clients.map(client => (
               <div 
                 key={client.id} 

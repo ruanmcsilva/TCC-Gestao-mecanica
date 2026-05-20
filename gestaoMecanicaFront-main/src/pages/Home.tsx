@@ -58,7 +58,7 @@ function HomePage({ setIsAuthenticated }: HomePageProps) {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto font-sans min-h-[75vh] flex flex-col justify-center">
+    <div className="p-6 max-w-5xl mx-auto font-sans h-full flex flex-col justify-center overflow-y-auto w-full">
       
       {/* STATUS DO TOPO - Total de Peças em Destaque */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">

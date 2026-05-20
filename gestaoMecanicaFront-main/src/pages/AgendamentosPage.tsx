@@ -3,7 +3,7 @@ import api from '../api/api';
 import { useNotification } from '../contexts/NotificationContext';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
-import { Clock, User, MessageSquare, Plus, CheckCircle, XCircle, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon } from 'lucide-react';
 
 const AgendamentosPage: React.FC = () => {
   const [agendamentos, setAgendamentos] = useState<any[]>([]);
@@ -30,14 +30,14 @@ const AgendamentosPage: React.FC = () => {
   };
 
   const fetchAuxiliares = async () => {
-    const resCli = await api.get('clientes/');
+    const resCli = await api.get('clientes/', { params: { page_size: 1000 } });
     setClientes(resCli.data.results || resCli.data);
+    const resMotos = await api.get('motos/', { params: { page_size: 1000 } });
+    setMotos(resMotos.data.results || resMotos.data);
   };
 
-  const handleClienteChange = async (clienteId: string) => {
-    setForm({ ...form, cliente: clienteId });
-    const resMotos = await api.get(`motos/?search=${clienteId}`);
-    setMotos(resMotos.data.results || resMotos.data);
+  const handleClienteChange = (clienteId: string) => {
+    setForm({ ...form, cliente: clienteId, moto: '' });
   };
 
 
@@ -80,7 +80,7 @@ const AgendamentosPage: React.FC = () => {
   });
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
+    <div className="p-6 bg-gray-50 h-full overflow-y-auto flex flex-col">
       {/* HEADER CENTRALIZADO */}
       <div className="flex flex-col items-center text-center mb-8">
         <h1 className="text-3xl font-black text-gray-800 uppercase italic tracking-tighter">Agenda Técnica</h1>
@@ -196,9 +196,9 @@ const AgendamentosPage: React.FC = () => {
               </div>
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase mb-1 block">Moto do Cliente</label>
-                <select className="w-full bg-gray-50 border-none rounded-xl p-3 font-bold text-sm outline-none focus:ring-2 ring-orange-500" onChange={(e) => setForm({ ...form, moto: e.target.value })} disabled={!form.cliente}>
+                <select className="w-full bg-gray-50 border-none rounded-xl p-3 font-bold text-sm outline-none focus:ring-2 ring-orange-500" value={form.moto} onChange={(e) => setForm({ ...form, moto: e.target.value })} disabled={!form.cliente}>
                   <option value="">Selecione a Moto</option>
-                  {motos.map(m => <option key={m.id} value={m.id}>{m.modelo} ({m.placa})</option>)}
+                  {motos.filter(m => m.cliente.toString() === form.cliente).map(m => <option key={m.id} value={m.id}>{m.modelo} ({m.placa})</option>)}
                 </select>
               </div>
               <div className="grid grid-cols-2 gap-4">

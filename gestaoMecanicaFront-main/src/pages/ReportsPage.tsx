@@ -5,9 +5,9 @@ import { useNotification } from '../contexts/NotificationContext';
 // Importando os ícones
 import { History, FileText, Hash, Calendar, User, Clock, ArrowRight, LayoutDashboard, TrendingUp, Printer } from 'lucide-react';
 // Importando componentes de gráfico
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
-  PieChart, Pie, Cell, AreaChart, Area 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  PieChart, Pie, Cell, AreaChart, Area
 } from 'recharts';
 
 interface ReportData {
@@ -27,14 +27,14 @@ const ReportsPage: React.FC = () => {
   const [history, setHistory] = useState<any[]>([]);
   const [report, setReport] = useState<ReportData | null>(null);
   const [dashData, setDashData] = useState<any>(null);
-  const [loading, setLoading] = useState<boolean>(false); 
+  const [loading, setLoading] = useState<boolean>(false);
 
   // Filtros
-  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1); 
-  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear()); 
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [periodo, setPeriodo] = useState<string>('mes');
   const [periodoDash, setPeriodoDash] = useState<string>('mes');
-  
+
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 
@@ -53,14 +53,13 @@ const ReportsPage: React.FC = () => {
     }
   };
 
-  // --- BUSCA RELATÓRIO FINANCEIRO ORIGINAL ---
   const handleFetchReport = async (e?: React.FormEvent, isManual: boolean = false) => {
     e?.preventDefault();
     setLoading(true);
     try {
       const response = await api.get(`/relatorio-financeiro/?mes=${selectedMonth}&ano=${selectedYear}&periodo=${periodo}`);
       setReport(response.data);
-      
+
       if (isManual) {
         if (response.data.servicos_concluidos_count === 0) {
           showNotification('Sem serviços CONCLUÍDOS no período.', 'info');
@@ -76,7 +75,7 @@ const ReportsPage: React.FC = () => {
     }
   };
 
-  // --- BUSCA HISTÓRICO ORIGINAL ---
+
   const fetchHistory = async () => {
     setLoading(true);
     try {
@@ -104,38 +103,34 @@ const ReportsPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen font-sans">
-      
-      {/* SELETOR DE ABAS - MANTENDO SEU ESTILO */}
-      <div className="flex bg-white w-fit p-1 rounded-xl shadow-sm border border-gray-200 mb-8 no-print">
+    <div className="p-6 h-full overflow-y-auto font-sans flex flex-col">
+
+      <div className="flex bg-white w-fit p-1 rounded-xl shadow-sm border border-gray-200 mb-8 no-print shrink-0">
         <button
           onClick={() => setActiveTab('relatorio')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
-            activeTab === 'relatorio' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:bg-gray-50'
-          }`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${activeTab === 'relatorio' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:bg-gray-50'
+            }`}
         >
           <FileText size={16} /> Relatório
         </button>
         <button
           onClick={() => setActiveTab('dashboard')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
-            activeTab === 'dashboard' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'
-          }`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${activeTab === 'dashboard' ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:bg-gray-50'
+            }`}
         >
           <LayoutDashboard size={16} /> Dashboard
         </button>
         <button
           onClick={() => setActiveTab('historico')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${
-            activeTab === 'historico' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:bg-gray-50'
-          }`}
+          className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${activeTab === 'historico' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:bg-gray-50'
+            }`}
         >
           <History size={16} /> Histórico
         </button>
       </div>
 
       {activeTab === 'dashboard' ? (
-        /* --- ABA DASHBOARD (NOVA ADIÇÃO) --- */
+
         <div className="animate-in fade-in duration-500">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-black text-gray-800 uppercase italic flex items-center gap-3 tracking-tighter">
@@ -146,9 +141,8 @@ const ReportsPage: React.FC = () => {
                 <button
                   key={p}
                   onClick={() => setPeriodoDash(p)}
-                  className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all cursor-pointer ${
-                    periodoDash === p ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'
-                  }`}
+                  className={`px-3 py-1 rounded-md text-[10px] font-black uppercase transition-all cursor-pointer ${periodoDash === p ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'
+                    }`}
                 >
                   {p}
                 </button>
@@ -181,7 +175,7 @@ const ReportsPage: React.FC = () => {
                   <div className="h-72">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={dashData.timeline}>
-                        <defs><linearGradient id="colorF" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f97316" stopOpacity={0.1}/><stop offset="95%" stopColor="#f97316" stopOpacity={0}/></linearGradient></defs>
+                        <defs><linearGradient id="colorF" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f97316" stopOpacity={0.1} /><stop offset="95%" stopColor="#f97316" stopOpacity={0} /></linearGradient></defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis dataKey="data_rotulo" fontSize={10} fontWeight="bold" stroke="#94a3b8" />
                         <YAxis fontSize={10} fontWeight="bold" stroke="#94a3b8" />
@@ -253,7 +247,6 @@ const ReportsPage: React.FC = () => {
           )}
         </div>
       ) : activeTab === 'relatorio' ? (
-        /* --- SEU CÓDIGO ORIGINAL DO RELATÓRIO FINANCEIRO --- */
         <>
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-2xl font-bold text-gray-800 uppercase tracking-tight">Relatório Financeiro</h1>
@@ -264,9 +257,8 @@ const ReportsPage: React.FC = () => {
                     key={p}
                     type="button"
                     onClick={() => setPeriodo(p)}
-                    className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all cursor-pointer ${
-                      periodo === p ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'
-                    }`}
+                    className={`px-3 py-1 rounded-md text-[10px] font-bold uppercase transition-all cursor-pointer ${periodo === p ? 'bg-orange-500 text-white shadow-md' : 'text-gray-400 hover:text-gray-600'
+                      }`}
                   >
                     {p === 'mes' ? 'Mês' : p === '6meses' ? '6 Meses' : 'Ano'}
                   </button>
@@ -274,13 +266,13 @@ const ReportsPage: React.FC = () => {
               </div>
               {periodo === 'mes' && (
                 <select value={selectedMonth} onChange={(e) => setSelectedMonth(Number(e.target.value))} className="px-3 py-2 border rounded-lg bg-white font-bold text-gray-600 outline-none shadow-sm cursor-pointer hover:border-orange-500 transition-colors">
-                  {Array.from({ length: 12 }, (_, i) => <option key={i+1} value={i+1}>{String(i+1).padStart(2, '0')}</option>)}
+                  {Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{String(i + 1).padStart(2, '0')}</option>)}
                 </select>
               )}
               <select value={selectedYear} onChange={(e) => setSelectedYear(Number(e.target.value))} className="px-3 py-2 border rounded-lg bg-white font-bold text-gray-600 outline-none shadow-sm cursor-pointer hover:border-orange-500 transition-colors">
-                 {Array.from({ length: 5 }, (_, i) => { const year = new Date().getFullYear() - i; return <option key={year} value={year}>{year}</option> })}
+                {Array.from({ length: 5 }, (_, i) => { const year = new Date().getFullYear() - i; return <option key={year} value={year}>{year}</option> })}
               </select>
-              <button type="submit" className="bg-orange-500 text-white px-4 py-2 rounded-lg font-bold hover:bg-orange-600 shadow-md transition-colors cursor-pointer">{loading ? '...' : 'Gerar'}</button>
+
             </form>
           </div>
 
@@ -325,8 +317,8 @@ const ReportsPage: React.FC = () => {
               <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 uppercase text-xs">Resumo de Atividade</h2>
                 <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl mb-4">
-                   <span className="text-4xl font-black text-orange-500">{report.servicos_concluidos_count}</span>
-                   <p className="text-xs font-bold text-gray-500 uppercase leading-tight">Ordens de Serviço Concluídas</p>
+                  <span className="text-4xl font-black text-orange-500">{report.servicos_concluidos_count}</span>
+                  <p className="text-xs font-bold text-gray-500 uppercase leading-tight">Ordens de Serviço Concluídas</p>
                 </div>
                 <p className="text-lg font-black text-gray-900 uppercase text-sm">Faturamento Bruto: <span className="text-2xl ml-2">R$ {formatCurrency(report.total_receita_bruta)}</span></p>
               </div>
@@ -339,24 +331,21 @@ const ReportsPage: React.FC = () => {
             </>
           ) : (
             <div className="text-center py-20 bg-white rounded-xl border-2 border-dashed border-gray-200">
-               <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">Aguardando definição de período para calcular...</p>
+              <p className="text-gray-400 font-bold uppercase text-xs tracking-widest">Aguardando definição de período para calcular...</p>
             </div>
           )}
         </>
       ) : (
         /* --- ABA DE HISTÓRICO ORIGINAL --- */
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden w-[100%] mx-auto">
-          <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-white">
-            <h2 className="text-lg font-black text-gray-800 uppercase italic">Registro de Saídas Concluídas</h2>
-            <span className="text-[10px] font-black bg-orange-100 text-orange-600 px-3 py-1 rounded-full uppercase tracking-widest">{history.length} Registros</span>
-          </div>
+
           <div className="overflow-y-auto max-h-[650px] custom-scrollbar">
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                  <th className="px-6 py-5 bg-gray-50"><Hash size={14} className="inline mr-1"/> ID</th>
-                  <th className="px-6 py-5 bg-gray-50"><Calendar size={14} className="inline mr-1"/> Data e Hora</th>
-                  <th className="px-6 py-5 bg-gray-50"><User size={14} className="inline mr-1"/> Mecânico Responsável</th>
+                  <th className="px-6 py-5 bg-gray-50"><Hash size={14} className="inline mr-1" /> ID</th>
+                  <th className="px-6 py-5 bg-gray-50"><Calendar size={14} className="inline mr-1" /> Data e Hora</th>
+                  <th className="px-6 py-5 bg-gray-50"><User size={14} className="inline mr-1" /> Mecânico Responsável</th>
                   <th className="px-6 py-5 text-right bg-gray-50">Ver Detalhes</th>
                 </tr>
               </thead>
@@ -372,7 +361,7 @@ const ReportsPage: React.FC = () => {
                     </td>
                     <td className="px-6 py-5"><span className="text-sm font-bold text-gray-700">{item.data_fim ? new Date(item.data_fim).toLocaleDateString() : '---'}</span></td>
                     <td className="px-6 py-5 text-sm font-black text-gray-600 uppercase">{item.responsavel_nome || 'Admin'}</td>
-                    <td className="px-6 py-5 text-right"><button onClick={() => navigate(`/servicos/${item.id}`)} className="p-3 bg-gray-100 text-gray-400 rounded-lg hover:bg-orange-500 hover:text-white transition-all cursor-pointer"><ArrowRight size={20}/></button></td>
+                    <td className="px-6 py-5 text-right"><button onClick={() => navigate(`/servicos/${item.id}`)} className="p-3 bg-gray-100 text-gray-400 rounded-lg hover:bg-orange-500 hover:text-white transition-all cursor-pointer"><ArrowRight size={20} /></button></td>
                   </tr>
                 ))}
               </tbody>

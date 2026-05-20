@@ -25,11 +25,13 @@ from rest_framework.decorators import api_view
 from .services.fiscal_service import FiscalService
 from .models import Servico
 from django.db import transaction
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
 from .models import Servico, ItemServicoPeca
 from .utils import formatar_zap_link
 from datetime import timedelta
-import google.generativeai as genai
 
 
 
@@ -296,7 +298,8 @@ class ServicoViewSet(viewsets.ModelViewSet):
         return queryset
     
     def perform_create(self, serializer): 
-        serializer.save(responsavel=self.request.user)
+        responsavel = serializer.validated_data.get('responsavel', self.request.user)
+        serializer.save(responsavel=responsavel)
         
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status']
@@ -638,6 +641,12 @@ class DashboardAnaliticoView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def get(self, request):
+        if pd is None:
+            return Response(
+                {"error": "Relatório analítico indisponível: dependência pandas não instalada no container."},
+                status=503
+            )
+
         periodo_selecionado = request.query_params.get('periodo', 'mes')
         
         # 1. Carregar Serviços (Removido o campo inexistente 'valor_total_servico')
@@ -779,7 +788,8 @@ class AgendamentoViewSet(viewsets.ModelViewSet):
 
 
 
-genai.configure(api_key=settings.GEMINI_API_KEY)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def consultar_ai(request):
@@ -789,23 +799,82 @@ def consultar_ai(request):
         return Response({"error": "A pergunta é obrigatória."}, status=400)
 
     contexto = (
-        "Você é o 'Space Expert', o assistente de inteligência artificial da oficina Space Motos. "
-        "Sua especialidade é mecânica de motocicletas..."
+        "Você é o Space Expert, assistente técnico da oficina Space Motos, especializado em mecânica "
+        "de motocicletas no Brasil. Responda sempre em português brasileiro, de forma direta e útil. "
+        "Não comece se apresentando, não diga apenas que pode ajudar e não enrole. "
+        "Se o usuário cumprimentar, responda com uma saudação curta. "
+        "Se o usuário perguntar medida, peça, retentor, óleo, calibragem, defeito ou manutenção, "
+        "responda primeiro a informação técnica mais provável. Depois diga que pode variar conforme "
+        "ano, versão e peça instalada, e recomende confirmar no manual, etiqueta, peça antiga ou catálogo. "
+        "Se não tiver certeza absoluta, diga 'o mais comum é' e explique como conferir. "
+        "Não use Markdown, negrito ou listas longas; use frases curtas."
     )
 
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        
-        # Este modelo agora está validado com sua cota
-        model = genai.GenerativeModel('gemini-2.5-flash') 
-        
-        response = model.generate_content(f"{contexto}\n\nUsuário pergunta: {pergunta}")
-        return Response({"resposta": response.text}, status=200)
-        
+        import requests
+        import time
+
+        if not settings.GEMINI_API_KEY:
+            raise Exception("GEMINI_API_KEY não configurada.")
+
+        prompt = f"{contexto}\n\nUsuário pergunta: {pergunta}"
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 900,
+            },
+        }
+
+        modelos = [
+            settings.GEMINI_MODEL,
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash",
+        ]
+        ultimo_erro = None
+
+        for nome_modelo in dict.fromkeys(modelos):
+            url = (
+                "https://generativelanguage.googleapis.com/v1beta/models/"
+                f"{nome_modelo}:generateContent?key={settings.GEMINI_API_KEY}"
+            )
+            for tentativa in range(3):
+                response = requests.post(url, json=payload, timeout=20)
+                if response.status_code == 200:
+                    data = response.json()
+                    texto = (
+                        data.get("candidates", [{}])[0]
+                        .get("content", {})
+                        .get("parts", [{}])[0]
+                        .get("text", "")
+                        .strip()
+                    )
+                    if texto:
+                        return Response({"resposta": texto}, status=200)
+                    ultimo_erro = f"{nome_modelo}: Gemini retornou resposta vazia."
+                    break
+
+                ultimo_erro = f"{nome_modelo}: HTTP {response.status_code}"
+
+                if response.status_code in [400, 404, 429]:
+                    break
+
+                if response.status_code in [500, 502, 503, 504] and tentativa < 2:
+                    time.sleep(1)
+                    continue
+
+                break
+
+        raise Exception(ultimo_erro or "Nenhum modelo Gemini respondeu.")
+
     except Exception as e:
-        # Esse print vai aparecer no seu 'docker-compose logs -f backend'
         print("\n" + "="*30)
-        print(f"ERRO CRÍTICO IA: {str(e)}")
+        print(f"Erro ao consultar IA: {str(e)}")
         print("="*30 + "\n")
-        return Response({"error": str(e)}, status=500) # Retornamos o erro real para o Front ver
+        return Response({"resposta": "Desculpe, o Space Expert está temporariamente indisponível. Por favor, tente novamente mais tarde."}, status=200)
+
+class FuncionarioViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = User.objects.filter(is_active=True)
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
-import api from '../api/api'; // Garanta que este caminho está correto no seu projeto
+import { Bot, MessageCircle, X, Send, Loader2 } from 'lucide-react';
+import api from '../api/api';
 
 const AIChatWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -110,55 +110,58 @@ const AIChatWidget: React.FC = () => {
              }}
         >
           {/* Header estilizado para combinar com o tema Space Motos */}
-          <div className="bg-amber-500 text-black p-4 flex justify-between items-center shadow-md">
-            <div className="flex items-center gap-2">
-              <div className="bg-white p-1.5 rounded-lg">
-                <MessageCircle size={20} />
+          <div className="bg-[#1a1a1a] text-white p-4 flex justify-between items-center shadow-md">
+            <div className="flex items-center gap-3">
+              <div className="bg-orange-500 p-2 rounded-full">
+                <Bot size={24} color="white" />
               </div>
               <div>
-                <h3 className="font-bold text-sm leading-none">Space Expert</h3>
-                <span className="text-[10px] text-black uppercase font-black">IA de Mecânica</span>
+                <h3 className="font-bold text-base leading-none">Space Expert</h3>
+                <span className="text-[10px] text-gray-400 uppercase font-black tracking-widest">IA de Mecânica</span>
               </div>
             </div>
-            <button onClick={() => setIsOpen(false)} className="hover:bg-white/20 p-1.5 rounded-lg transition-colors">
-              <X size={20} />
+            <button onClick={() => setIsOpen(false)} className="hover:bg-white/10 p-1.5 rounded-lg transition-colors">
+              <X size={24} color="white" />
             </button>
           </div>
           
-          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 bg-gray-50">
+          <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4 bg-[#f0f2f5]">
             {messages.map((msg, idx) => (
-              <div key={idx} className={`max-w-[85%] p-3 rounded-2xl text-sm shadow-sm ${
+              <div key={idx} className={`max-w-[85%] p-3.5 rounded-2xl text-[15px] shadow-sm leading-relaxed ${
                 msg.role === 'user' 
-                ? 'bg-amber-500 text-white self-end rounded-tr-none' 
-                : 'bg-white border border-gray-200 text-gray-800 self-start rounded-tl-none'
+                ? 'bg-[#F97316] text-white self-end rounded-br-sm' 
+                : 'bg-[#1a1a1a] text-white self-start rounded-bl-sm'
               }`}>
+                {msg.role === 'ai' && (
+                  <span className="text-[#F97316] text-[10px] font-bold mb-1 tracking-widest block uppercase">SPACE EXPERT</span>
+                )}
                 <p className="whitespace-pre-wrap">{msg.text}</p>
               </div>
             ))}
             {loading && (
-              <div className="bg-white border border-gray-200 p-3 rounded-2xl self-start rounded-tl-none max-w-[85%] flex items-center gap-3 shadow-sm">
-                <Loader2 size={18} className="animate-spin text-amber-500" />
-                <span className="text-xs text-gray-500 font-bold uppercase tracking-tighter">Analisando motor...</span>
+              <div className="bg-[#1a1a1a] text-white p-3.5 rounded-2xl self-start rounded-bl-sm max-w-[85%] flex items-center gap-3 shadow-sm">
+                <Loader2 size={18} className="animate-spin text-[#F97316]" />
+                <span className="text-xs font-bold uppercase tracking-tighter">Analisando motor...</span>
               </div>
             )}
             <div ref={messagesEndRef} />
           </div>
           
-          <div className="p-4 bg-white border-t border-gray-100 flex gap-2">
+          <div className="p-3 bg-white border-t border-gray-200 flex items-center gap-2">
             <input 
               type="text" 
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Dúvida técnica ou de peças..."
-              className="flex-1 p-3 bg-gray-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all"
+              placeholder="Descreva o problema da moto..."
+              className="flex-1 px-4 py-3 bg-[#f8f9fa] border border-gray-200 rounded-full text-[15px] text-gray-800 focus:ring-2 focus:ring-[#F97316] focus:border-transparent outline-none transition-all"
             />
             <button 
               onClick={sendMessage}
               disabled={loading || !input.trim()}
-              className="bg-amber-500 text-white p-3 rounded-xl hover:bg-amber-400 disabled:bg-gray-300 transition-all shadow-lg shadow-blue-600/20"
+              className="bg-[#F97316] text-white w-12 h-12 flex items-center justify-center rounded-full hover:bg-orange-600 disabled:bg-gray-300 transition-all shadow-md flex-shrink-0"
             >
-              <Send size={18} />
+              <Send size={20} className="ml-1" />
             </button>
           </div>
         </div>
@@ -169,11 +172,11 @@ const AIChatWidget: React.FC = () => {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className={`w-16 h-16 bg-amber-500 rounded-full shadow-2xl flex items-center justify-center text-white transition-all ${
+        className={`w-16 h-16 bg-[#F97316] rounded-full shadow-2xl flex items-center justify-center text-white transition-all ${
           isDragging ? 'cursor-grabbing scale-110 rotate-12' : 'cursor-grab hover:scale-110 active:scale-95'
         } border-4 border-white`}
       >
-        <MessageCircle size={32} />
+        <Bot size={32} />
         {/* Badge indicador de IA */}
         <div className="absolute -top-1 -right-1 bg-orange-500 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center">
           <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />

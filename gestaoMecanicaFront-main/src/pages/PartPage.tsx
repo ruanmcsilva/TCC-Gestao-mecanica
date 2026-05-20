@@ -14,6 +14,7 @@ interface PartData {
 }
 
 const PartPage: React.FC = () => {
+  const LOW_STOCK_LIMIT = 5;
   const [parts, setParts] = useState<PartData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFormVisible, setIsFormVisible] = useState<boolean>(false);
@@ -145,7 +146,7 @@ const PartPage: React.FC = () => {
   };
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+    <div className={`h-full flex flex-col font-sans ${isFormVisible ? 'overflow-y-auto' : 'overflow-hidden'}`}>
       <div className="flex justify-between items-center mb-8">
         <div className="relative w-2/3">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center">
@@ -196,7 +197,7 @@ const PartPage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Peças</h2>
         </div>
@@ -212,16 +213,25 @@ const PartPage: React.FC = () => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Carregando estoque...</p> : (
-          <div className="divide-y divide-gray-50">
-            {parts.length > 0 ? parts.map(part => (
+          <div className="divide-y divide-gray-50 flex-grow pr-2">
+            {parts.length > 0 ? parts.map(part => {
+              const isLowStock = part.quantidade_em_estoque <= LOW_STOCK_LIMIT;
+              return (
               <div 
                 key={part.id} 
-                // ADICIONADO: hover:bg-blue-50 e transition-colors para efeito visual
-                className="grid grid-cols-6 gap-4 items-center px-2 py-4 hover:bg-blue-50 transition-colors text-center"
+                className={`grid grid-cols-6 gap-4 items-center px-2 py-4 transition-colors text-center ${isLowStock ? 'bg-red-50 hover:bg-red-100 border-l-4 border-red-500' : 'hover:bg-blue-50'}`}
               >
-                <div className="text-gray-900 font-bold text-left uppercase text-[11px]">{part.nome}</div>
+                <div className="text-gray-900 font-bold text-left uppercase text-[11px] flex flex-col items-start gap-1">
+                  {part.nome}
+                  {isLowStock && (
+                    <span className="w-fit bg-red-100 text-red-600 text-[9px] px-1.5 py-0.5 rounded font-black border border-red-200 flex items-center gap-1 shadow-sm">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      ESTOQUE BAIXO
+                    </span>
+                  )}
+                </div>
                 <div className="text-sm text-gray-500 font-medium">{part.numero_serie || '---'}</div>
-                <div className="text-sm font-black text-gray-700">{part.quantidade_em_estoque}</div>
+                <div className={`text-sm font-black ${isLowStock ? 'text-red-600' : 'text-gray-700'}`}>{part.quantidade_em_estoque}</div>
                 <div className="text-sm text-red-500 font-bold">R$ {Number(part.preco_custo).toFixed(2)}</div>
                 <div className="text-sm text-green-600 font-black">R$ {Number(part.preco_venda).toFixed(2)}</div>
                 <div className="flex justify-end gap-4 font-black text-[10px] uppercase">
@@ -229,7 +239,7 @@ const PartPage: React.FC = () => {
                   <button onClick={() => handleDeletePart(part.id)} className="text-red-300 hover:text-red-600 cursor-pointer">Excluir</button>
                 </div>
               </div>
-            )) : <p className="text-center py-4 text-gray-400">Nenhuma peça encontrada.</p>}
+            )}) : <p className="text-center py-4 text-gray-400">Nenhuma peça encontrada.</p>}
           </div>
         )}
 

@@ -18,17 +18,12 @@ export default function CustomDrawer(props: any) {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }} edges={['top', 'bottom']}>
-      <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 0 }}>
+      <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 2, marginLeft: -12}}>
         
         {/* Header do Drawer */}
         <View style={styles.header}>
-          <Image 
-            source={{ uri: 'https://ui-avatars.com/api/?name=João+Silva&background=EE6B22&color=fff' }} 
-            style={styles.avatar} 
-          />
           <View>
-            <Text style={styles.userName}>João Silva</Text>
-            <Text style={styles.userRole}>Mecânico Chefe</Text>
+            <Text style={styles.userName}>Ruan</Text>
           </View>
         </View>
 

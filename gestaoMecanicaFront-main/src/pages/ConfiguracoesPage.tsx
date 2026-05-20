@@ -37,10 +37,6 @@ const ConfiguracoesPage: React.FC = () => {
       try {
         const response = await api.get('/auth/user/');
         setUserData(response.data);
-        if (response.data.is_staff !== true && response.data.is_superuser !== true) {
-          showNotification('Acesso restrito. Redirecionando...', 'error');
-          window.location.href = '/';
-        }
       } catch (err) {
         console.error("Erro ao buscar dados do usuário", err);
       }
@@ -102,6 +98,17 @@ const handlePasswordChange = async (e: React.FormEvent) => {
   }
 };
 
+  const handleProfileUpdate = async () => {
+    try {
+      await api.patch('/auth/user/', { first_name: userData.first_name });
+      showNotification('Perfil atualizado com sucesso!', 'success');
+      setActiveTab(null);
+    } catch (err) {
+      console.error("Erro ao atualizar perfil:", err);
+      showNotification('Erro ao atualizar perfil.', 'error');
+    }
+  };
+
   const handleDeactivateAccount = async () => {
     setIsDeactivating(true);
     try {
@@ -148,7 +155,7 @@ const handlePasswordChange = async (e: React.FormEvent) => {
               className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-lg text-gray-400 cursor-not-allowed" 
             />
           </div>
-          <button className="bg-gray-800 text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-black transition-all">
+          <button onClick={handleProfileUpdate} className="bg-gray-800 text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-black transition-all">
             Salvar Alterações
           </button>
         </div>

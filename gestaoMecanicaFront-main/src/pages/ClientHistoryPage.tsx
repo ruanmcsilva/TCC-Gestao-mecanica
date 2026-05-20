@@ -33,7 +33,7 @@ const ClientHistoryPage: React.FC = () => {
   if (loading) return <div className="p-8 text-center text-gray-600">Carregando histórico...</div>;
 
   return (
-    <div className="p-6">
+    <div className="h-full flex flex-col p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Histórico do Cliente</h1>
         <button 
@@ -44,14 +44,15 @@ const ClientHistoryPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden">
+      <div className="bg-white shadow rounded-lg overflow-hidden flex-grow flex flex-col">
         {/* 3. PROTEÇÃO: Verificamos se history existe e se tem tamanho */}
         {!history || history.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             Nenhum serviço encontrado para este cliente.
           </div>
         ) : (
-          <table className="w-full text-left border-collapse">
+          <div className="overflow-y-auto flex-grow">
+            <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50">
               <tr>
                 <th className="p-4 border-b font-bold">Data</th>
@@ -83,7 +84,8 @@ const ClientHistoryPage: React.FC = () => {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
       </div>
     </div>

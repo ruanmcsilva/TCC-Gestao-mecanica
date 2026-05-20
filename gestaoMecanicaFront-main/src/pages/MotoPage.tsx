@@ -143,7 +143,7 @@ const MotoPage: React.FC = () => {
   const getClientData = (clientId: number) => clientes.find(c => c.id === clientId);
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+    <div className={`h-full flex flex-col font-sans ${isFormVisible ? 'overflow-y-auto' : 'overflow-hidden'}`}>
       <div className="flex justify-between items-center mb-8">
         <div className="relative w-2/3">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center">
@@ -208,7 +208,7 @@ const MotoPage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Motos</h2>
           {searchTerm && <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">{motos.length} Encontrada(s)</span>}
@@ -224,7 +224,7 @@ const MotoPage: React.FC = () => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Carregando...</p> : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 flex-grow pr-2">
             {motos.map(moto => {
               const clienteInfo = getClientData(moto.cliente);
               return (

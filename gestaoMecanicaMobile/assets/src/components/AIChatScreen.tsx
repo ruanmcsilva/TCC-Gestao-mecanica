@@ -4,7 +4,8 @@ import {
   KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet 
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import axios from 'axios';
+import api from '../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Message {
   id: string;
@@ -13,7 +14,6 @@ interface Message {
 }
 
 const AIChatScreen = ({ route }: any) => {
-  // Pega o token vindo do initialParams do App.tsx
   const { token } = route.params || {};
 
   const [messages, setMessages] = useState<Message[]>([
@@ -27,7 +27,6 @@ const AIChatScreen = ({ route }: any) => {
   const [loading, setLoading] = useState(false);
   const flatListRef = useRef<FlatList>(null);
 
-  // LOG de depuração para você ver no terminal do Ubuntu se o token chegou
   useEffect(() => {
     console.log("Token recebido no Chat:", token ? "Token Carregado ✅" : "Token Vazio ❌");
   }, [token]);
@@ -35,8 +34,10 @@ const AIChatScreen = ({ route }: any) => {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
+    const authToken = token || await AsyncStorage.getItem('@app_token');
+
     // Se o token não estiver aqui, nem tenta a requisição para evitar o 401
-    if (!token) {
+    if (!authToken) {
       const errorMsg: Message = { 
         id: Date.now().toString(), 
         text: "Erro de autenticação: Token não encontrado. Tente fazer login novamente.", 
@@ -54,12 +55,12 @@ const AIChatScreen = ({ route }: any) => {
 
     try {
       // Ajuste o IP conforme a rede do seu Dell G15 em Maceió
-      const response = await axios.post(
-        'http://192.168.0.123:8000/api/v1/ai/consultar/', 
+      const response = await api.post(
+        '/ai/consultar/', 
         { pergunta: currentInput },
         { 
           headers: { 
-            'Authorization': `Bearer ${token}`, // Garantindo o formato Bearer
+            'Authorization': `Bearer ${authToken}`, // Garantindo o formato Bearer
             'Content-Type': 'application/json'
           } 
         }

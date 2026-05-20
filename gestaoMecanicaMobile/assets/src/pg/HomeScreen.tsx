@@ -86,7 +86,7 @@ const fetchDashboardData = useCallback(async () => {
                 <TouchableOpacity style={styles.menuBtn} onPress={() => navigation.openDrawer()}>
                     <Menu color="black" size={32} strokeWidth={1.5} />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>DASHBOARD</Text>
+                <Text style={styles.headerTitle}>Space Motos</Text>
                 <View style={{ width: 32 }} />
             </View>
 
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
         alignItems: 'center', 
         justifyContent: 'space-between',
         paddingHorizontal: 20, 
-        paddingTop: 20, 
+        paddingTop: 35, 
         paddingBottom: 10 
     },
     headerTitle: { fontSize: 14, fontWeight: '900', color: '#111827', letterSpacing: 2 },

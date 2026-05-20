@@ -9,7 +9,7 @@ from .views import (
     low_stock_parts_count, client_history, consulta_api_externa,
     contar_convites_pendentes, SolicitacaoAcessoView,
     AutorizarAcessoView, listar_convites, DashboardAnaliticoView, AgendamentoViewSet,
-    RegistrarComTokenView, consultar_ai
+    RegistrarComTokenView, consultar_ai, FuncionarioViewSet
 )
 
 router = DefaultRouter()
@@ -23,6 +23,7 @@ router.register(r'itens-servico', ItemServicoPecaViewSet)
 router.register(r'movimentacoes', MovimentacaoEstoqueViewSet)
 router.register(r'fotos', FotoServicoViewSet)
 router.register(r'agendamento', AgendamentoViewSet)
+router.register(r'funcionarios', FuncionarioViewSet, basename='funcionarios')
 
 urlpatterns = [
     path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -41,11 +42,8 @@ urlpatterns = [
     path('convites/lista/', listar_convites, name='listar-convites'),
     path('autorizar-acesso/<int:pk>/', AutorizarAcessoView.as_view(), name='autorizar-acesso'),
     path('solicitar-acesso/', SolicitacaoAcessoView.as_view(), name='solicitar-acesso'),
-    
-    # ROTA PARA O DASHBOARD COM PANDAS
     path('dashboard-analitico/', DashboardAnaliticoView.as_view(), name='dashboard-analitico'),
-    
-    # O include(router.urls) deve ficar aqui para carregar as rotas automáticas
+  
     path('ai/consultar/', consultar_ai, name='consultar_ai'),
     path('', include(router.urls)),
 ]

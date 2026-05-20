@@ -24,6 +24,10 @@ const ServiceDetailsPage: React.FC = () => {
   const [allParts, setAllParts] = useState<any[]>([]);
   const [uploadedPhotos, setUploadedPhotos] = useState<any[]>([]);
   
+  const [allClients, setAllClients] = useState<any[]>([]);
+  const [allMotos, setAllMotos] = useState<any[]>([]);
+  const [allFuncionarios, setAllFuncionarios] = useState<any[]>([]);
+  
   // Estados para Pagamento
   const [showPagamento, setShowPagamento] = useState(false);
   const [metodoPagamento, setMetodoPagamento] = useState('PIX');
@@ -69,11 +73,17 @@ const ServiceDetailsPage: React.FC = () => {
   const fetchDetails = useCallback(async () => {
     setLoading(true);
     try {
-      const [serviceResponse, partsResponse, allPartsResponse, photosResponse] = await Promise.all([
+      const [
+        serviceResponse, partsResponse, allPartsResponse, photosResponse,
+        allClientsRes, allMotosRes, allFuncRes
+      ] = await Promise.all([
         api.get(`/servicos/${id}/`),
         api.get(`/itens-servico/?servico=${id}`),
         api.get('/pecas/?page_size=1000'),
         api.get(`/fotos/?servico=${id}`),
+        api.get('/clientes/?page_size=1000'),
+        api.get('/motos/?page_size=1000'),
+        api.get('/funcionarios/?page_size=100'),
       ]);
 
       const serviceData = serviceResponse.data;
@@ -82,6 +92,9 @@ const ServiceDetailsPage: React.FC = () => {
       setServiceParts(partsResponse.data.results || []);
       setAllParts(allPartsResponse.data.results || []);
       setUploadedPhotos(photosResponse.data.results || []);
+      setAllClients(allClientsRes.data.results || []);
+      setAllMotos(allMotosRes.data.results || []);
+      setAllFuncionarios(allFuncRes.data.results || allFuncRes.data || []);
 
       // AJUSTE: Só busca a moto se o ID existir para evitar erro 404/null
       const [clientResponse, motoResponse] = await Promise.all([
@@ -132,7 +145,15 @@ const ServiceDetailsPage: React.FC = () => {
   const handleUpdateService = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.put(`/servicos/${id}/`, editedService);
+      const payload = {
+        cliente: editedService.cliente,
+        moto: editedService.moto,
+        responsavel: editedService.responsavel,
+        kilometragem: editedService.kilometragem,
+        valor_mao_de_obra: parseFloat(editedService.valor_mao_de_obra) || 0,
+        descricao: editedService.descricao
+      };
+      await api.patch(`/servicos/${id}/`, payload);
       setIsEditing(false);
       await fetchDetails();
       showNotification('Dados atualizados!', 'success');
@@ -250,7 +271,7 @@ const ServiceDetailsPage: React.FC = () => {
   if (loading || !service) return <div className="p-10 text-center font-bold text-gray-500 uppercase tracking-widest animate-pulse">Sincronizando oficina...</div>;
 
   return (
-    <div className="p-6 bg-[#f8fafc] min-h-screen font-sans">
+    <div className="p-6 bg-[#f8fafc] h-full overflow-y-auto font-sans">
       
       {/* HEADER */}
       <div className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
@@ -312,12 +333,62 @@ const ServiceDetailsPage: React.FC = () => {
 
             {isEditing ? (
               <form onSubmit={handleUpdateService} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Cliente</label>
+                  <Select
+                    name="cliente"
+                    options={allClients.map(c => ({ value: c.id, label: c.nome }))}
+                    value={editedService?.cliente ? { value: editedService.cliente, label: allClients.find(c => c.id === editedService.cliente)?.nome || 'Selecione o Cliente' } : null}
+                    onChange={(selectedOption) => {
+                      setEditedService({ ...editedService, cliente: selectedOption ? selectedOption.value : null, moto: '' });
+                    }}
+                    placeholder="Selecione o Cliente"
+                    className="font-bold text-sm mt-2"
+                    isClearable
+                    styles={customSelectStyles}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Moto</label>
+                  <select 
+                    name="moto" 
+                    value={editedService?.moto || ''} 
+                    onChange={e => setEditedService({...editedService, moto: Number(e.target.value) || null})} 
+                    className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl mt-2 focus:border-amber-500 outline-none font-bold cursor-pointer" 
+                    disabled={!editedService?.cliente}
+                  >
+                    <option value="" disabled>Selecione a Moto</option>
+                    {allMotos.filter(m => m.cliente === editedService?.cliente).map(m => (
+                      <option key={m.id} value={m.id}>{m.placa} - {m.modelo}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Trabalhador Responsável</label>
+                  <select 
+                    name="responsavel" 
+                    value={editedService?.responsavel || ''} 
+                    onChange={e => setEditedService({...editedService, responsavel: Number(e.target.value) || null})} 
+                    className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl mt-2 focus:border-amber-500 outline-none font-bold cursor-pointer"
+                  >
+                    <option value="" disabled>Selecione o Trabalhador</option>
+                    {allFuncionarios.map(f => (
+                      <option key={f.id} value={f.id}>{f.first_name || f.username}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Quilometragem</label>
+                  <input type="number" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl mt-2 focus:border-amber-500 outline-none font-bold" value={editedService?.kilometragem || ''} placeholder='Ex: 15000' onChange={e => setEditedService({...editedService, kilometragem: Number(e.target.value)})}/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-400 uppercase">Valor Mão de Obra</label>
+                  <input type="number" step="0.01" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-xl mt-2 focus:border-amber-500 outline-none font-bold" value={editedService?.valor_mao_de_obra || ''} placeholder='Ex: 150.00' onChange={e => setEditedService({...editedService, valor_mao_de_obra: e.target.value})}/>
+                </div>
                 <div className="md:col-span-2">
                   <label className="text-xs font-bold text-gray-400 uppercase">Descrição do Serviço</label>
-                  <textarea className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl mt-2 focus:border-amber-500 outline-none transition-all font-medium" rows={3} value={editedService?.descricao} onChange={e => setEditedService({...editedService, descricao: e.target.value})}/>
+                  <textarea className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl mt-2 focus:border-amber-500 outline-none transition-all font-medium" rows={3} value={editedService?.descricao || ''} onChange={e => setEditedService({...editedService, descricao: e.target.value})}/>
                 </div>
-                <input type="number" className="p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold" value={editedService?.kilometragem} placeholder='Km' onChange={e => setEditedService({...editedService, kilometragem: Number(e.target.value)})}/>
-                <input type="number" step="0.01" className="p-4 bg-gray-50 border-2 border-gray-100 rounded-xl font-bold" value={editedService?.valor_mao_de_obra} placeholder='Valor mão de obra' onChange={e => setEditedService({...editedService, valor_mao_de_obra: e.target.value})}/>
                 <div className="md:col-span-2 flex gap-4">
                   <button type="submit" className="bg-amber-500 text-white px-8 py-3 rounded-xl font-black text-xs cursor-pointer">SALVAR</button>
                   <button type="button" onClick={() => setIsEditing(false)} className="bg-gray-100 text-gray-500 px-8 py-3 rounded-xl font-bold text-xs cursor-pointer">CANCELAR</button>

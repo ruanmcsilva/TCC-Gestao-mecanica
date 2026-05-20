@@ -14,6 +14,7 @@ import {
   MaterialCommunityIcons,
   FontAwesome5
 } from '@expo/vector-icons';
+import { Home, Users, Bike, HandPlatter, Cog } from 'lucide-react-native';
 
 // Telas
 import LoginScreen from "./assets/src/pg/LoginScreen";
@@ -66,11 +67,11 @@ function TabNavigator() {
           },
       }}
     >
-      <Tab.Screen name="MainHome" component={HomeScreen} options={{ tabBarIcon: ({ focused }) => (<MaterialCommunityIcons name="home" color={focused ? '#F97316' : 'white'} size={28} />) }} />
-      <Tab.Screen name="MainClients" component={ClientScreen} options={{ tabBarIcon: ({ focused }) => (<FontAwesome5 name="users" color={focused ? '#F97316' : 'white'} size={22} />) }} />
-      <Tab.Screen name="MainMotos" component={VehicleScreen} options={{ tabBarIcon: ({ focused }) => (<View style={{ marginBottom: 5 }}><MaterialCommunityIcons name="motorbike" color={focused ? '#F97316' : 'white'} size={38} /></View>) }} />
-      <Tab.Screen name="MainServices" component={ServiceScreen} options={{ tabBarIcon: ({ focused }) => (<MaterialCommunityIcons name="tools" color={focused ? '#F97316' : 'white'} size={26} />) }} />
-      <Tab.Screen name="MainParts" component={PartScreen} options={{ tabBarIcon: ({ focused }) => (<MaterialCommunityIcons name="package-variant-closed" color={focused ? '#F97316' : 'white'} size={26} />) }} />
+      <Tab.Screen name="MainHome" component={HomeScreen} options={{ tabBarIcon: ({ focused }) => (<Home color={focused ? '#F97316' : 'white'} size={28} />) }} />
+      <Tab.Screen name="MainClients" component={ClientScreen} options={{ tabBarIcon: ({ focused }) => (<Users color={focused ? '#F97316' : 'white'} size={28} />) }} />
+      <Tab.Screen name="MainMotos" component={VehicleScreen} options={{ tabBarIcon: ({ focused }) => (<Bike color={focused ? '#F97316' : 'white'} size={28} />) }} />
+      <Tab.Screen name="MainServices" component={ServiceScreen} options={{ tabBarIcon: ({ focused }) => (<HandPlatter color={focused ? '#F97316' : 'white'} size={28} />) }} />
+      <Tab.Screen name="MainParts" component={PartScreen} options={{ tabBarIcon: ({ focused }) => (<Cog color={focused ? '#F97316' : 'white'} size={28} />) }} />
     </Tab.Navigator>
   );
 }

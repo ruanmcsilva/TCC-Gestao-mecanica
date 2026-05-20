@@ -7,7 +7,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-2^(71(0r_+fkji1u7=x0dgke+dejhsu(^4z2%h6n7a3@5sxlum'
 DEBUG = True
 ALLOWED_HOSTS = ['192.168.0.123', 'localhost', '127.0.0.1']
-GEMINI_API_KEY = 'AIzaSyDZhJtaV__vL4gC3_pLZ2mE3C4LYr4Gtyw'
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAdxY2aZeGqVjJTzp8jeYjG7YfEKx8kPBU")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -56,7 +57,6 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mecanica.wsgi.application'
 
-# Banco de dados configurado para o ambiente Docker
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -75,16 +75,16 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Configurações de Localização
-LANGUAGE_CODE = 'pt-br' # Alterado para português
-TIME_ZONE = 'America/Maceio' # Ajustado para o seu fuso
+
+LANGUAGE_CODE = 'pt-br' 
+TIME_ZONE = 'America/Maceio'
 USE_I18N = True
 USE_TZ = True
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://192.168.0.123:5173", # Web vindo do IP
+    "http://192.168.0.123:5173", 
 ]
 CSRF_TRUSTED_ORIGINS = [
     "http://192.168.0.123",
@@ -102,6 +102,8 @@ REST_FRAMEWORK = {
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 10,
+    'PAGE_SIZE_QUERY_PARAM': 'page_size',
+    'MAX_PAGE_SIZE': 1000,
 }
 
 REST_AUTH = {
@@ -119,11 +121,11 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-# Arquivos de Mídia (Imagens de produtos/perfil)
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# CONFIGURAÇÃO DE E-MAIL (SMTP GMAIL)
+
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
@@ -131,13 +133,11 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'ruanmcs2@gmail.com'
 EMAIL_HOST_PASSWORD = 'qqvrnqqxbjprunyy' 
 DEFAULT_FROM_EMAIL = 'Space Motos <ruanmcs2@gmail.com>'
-EMAIL_TIMEOUT = 10  # Evita que o servidor trave se o Gmail demorar a responder
-
-# Configuração para o emissor de notas (FocusNF-e)
+EMAIL_TIMEOUT = 10  
 FOCUSNFE_TOKEN = os.getenv("FOCUSNFE_TOKEN", "coloque_aqui_seu_token_de_homologacao")
-FOCUSNFE_AMBIENTE = "homologacao"   # Use sempre homologacao para testes do TCC
+FOCUSNFE_AMBIENTE = "homologacao"  
 
-# Dados da sua oficina (Mecânica Space) para a Nota Fiscal
+
 EMPRESA_FISCAL = {
     "cnpj": "00000000000100",          # CNPJ real ou de teste
     "inscricao_estadual": "00000000",  # IE de Alagoas

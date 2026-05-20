@@ -271,7 +271,7 @@ export default function LoginScreen(props: LoginProps) {
                     <View style={styles.questionMark}><Text style={styles.questionText}>?</Text></View>
                   </View>
                   <View style={styles.modalFooter}>
-                    <Text style={styles.instructionText}>Digite seu E-mail e clique em "Enviar" para{"\n"} receber um email para redefinir sua senha.</Text>
+                    <Text style={styles.instructionText}>Digite seu E-mail e clique em &quot;Enviar&quot; para{"\n"} receber um email para redefinir sua senha.</Text>
                     <Input placeholder="Digite seu email" leftIcon={<Feather name="mail" size={22} color="#6B7280" />} leftIconContainerStyle={{ marginLeft: 15 }} inputContainerStyle={styles.roundedInput} containerStyle={styles.inputShadow} onChangeText={setResetEmail} value={resetEmail} autoCapitalize="none" />
                     <View style={styles.modalButtons}>
                       <Button title="Cancelar" type="outline" buttonStyle={styles.btnCancel} titleStyle={{ color: '#E33E33' }} onPress={() => setModalVisible(false)} />

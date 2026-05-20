@@ -18,12 +18,14 @@ import NewServiceIntegrated from './pages/NewServiceIntegrated';
 import VendaBalcao from './pages/VendaBalcao';
 import AgendamentosPage from './pages/AgendamentosPage';
 import CadastroTokenScreen from './pages/CadastroTokenScreen';
+import EmployeeHistoryPage from './pages/EmployeeHistoryPage';
 
 // IMPORTAÇÃO DO CHAT DE IA
 import AIChatWidget from './components/AIChatWidget'; 
 
 import Layout from './components/Layout';
 import { NotificationProvider } from './contexts/NotificationContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 interface AuthProps {
   setIsAuthenticated: (isAuthenticated: boolean) => void;
@@ -39,9 +41,16 @@ function App() {
   }, []);
 
   const ProtectedRoutes = () => {
+    const { isAdmin, isLoading } = useAuth();
+
     if (!isAuthenticated) {
       return <Navigate to="/login" replace />;
     }
+
+    if (isLoading) {
+      return <div className="flex items-center justify-center h-screen bg-gray-900 text-white">Carregando permissões...</div>;
+    }
+
     return (
       <Layout setIsAuthenticated={setIsAuthenticated}>
         <Routes>
@@ -51,13 +60,18 @@ function App() {
           <Route path="/servicos" element={<ServicePage />} />
           <Route path="/servicos/:id" element={<ServiceDetailsPage />} />
           <Route path="/pecas" element={<PartPage />} />
-          <Route path="/relatorios" element={<ReportsPage />} />
+          {isAdmin && <Route path="/relatorios" element={<ReportsPage />} />}
           <Route path="/clientes/:id/historico" element={<ClientHistoryPage />} />
-          <Route path="/solicitacoes" element={<SolicitacoesScreen />} />
+          {isAdmin && <Route path="/solicitacoes" element={<SolicitacoesScreen />} />}
           <Route path="/configuracoes" element={<ConfiguracoesPage/>} />
           <Route path="/servicos/novo" element={<NewServiceIntegrated />} />
           <Route path="/venda-balcao" element={<VendaBalcao />} />
           <Route path="/agendamentos" element={<AgendamentosPage />} />
+          
+          {/* Rota para páginas restritas para não-admins */}
+          {!isAdmin && <Route path="/relatorios" element={<Navigate to="/" replace />} />}
+          {!isAdmin && <Route path="/solicitacoes" element={<Navigate to="/" replace />} />}
+          {!isAdmin && <Route path="/historico" element={<EmployeeHistoryPage />} />}
         </Routes>
         
         <AIChatWidget /> 
@@ -66,15 +80,17 @@ function App() {
   };
 
   return (
-    <NotificationProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
-          <Route path="/cadastro-token" element={<CadastroTokenScreen />} />
-          <Route path="/*" element={<ProtectedRoutes />} />
-        </Routes>
-      </Router>
-    </NotificationProvider>
+    <AuthProvider>
+      <NotificationProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<LoginPage setIsAuthenticated={setIsAuthenticated} />} />
+            <Route path="/cadastro-token" element={<CadastroTokenScreen />} />
+            <Route path="/*" element={<ProtectedRoutes />} />
+          </Routes>
+        </Router>
+      </NotificationProvider>
+    </AuthProvider>
   );
 }
 

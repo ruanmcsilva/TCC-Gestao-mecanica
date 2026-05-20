@@ -97,7 +97,8 @@ const NewServiceIntegrated: React.FC = () => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAddPart = (option: any) => {
@@ -175,7 +176,7 @@ const NewServiceIntegrated: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-8 bg-gray-50 min-h-screen font-sans">
+    <div className="p-4 md:p-8 bg-gray-50 h-full overflow-y-auto flex flex-col font-sans">
       <div className="max-w-6xl mx-auto">
         
         <div className="flex justify-between items-center mb-8 bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100">
@@ -190,12 +191,12 @@ const NewServiceIntegrated: React.FC = () => {
           <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
             <h2 className="text-xs font-black text-blue-600 uppercase tracking-widest mb-6 flex items-center gap-2"><User size={18}/> 1. Cliente</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <input type="text" name="nome" placeholder="Nome Completo" onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" required />
-              <input type="text" name="cpf_cnpj" placeholder="CPF" onChange={handleInputChange} onBlur={(e) => handleCPFBlur(e.target.value)} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" />
-              <input type="text" name="telefone" placeholder="WhatsApp" onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" required />
+              <input type="text" name="nome" placeholder="Nome Completo" value={formData.nome} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" required />
+              <input type="text" name="cpf_cnpj" placeholder="CPF" value={formData.cpf_cnpj} onChange={handleInputChange} onBlur={(e) => handleCPFBlur(e.target.value)} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" />
+              <input type="text" name="telefone" placeholder="WhatsApp" value={formData.telefone} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" required />
               
               <div className="md:col-span-3 flex flex-col md:flex-row gap-4">
-                <input type="text" name="cep" placeholder="CEP" onBlur={(e) => handleCEPBlur(e.target.value)} className="w-full md:w-1/4 p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-blue-700 outline-none" />
+                <input type="text" name="cep" placeholder="CEP" value={formData.cep} onChange={handleInputChange} onBlur={(e) => handleCEPBlur(e.target.value)} className="w-full md:w-1/4 p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-blue-700 outline-none" />
                 <input type="text" name="endereco" placeholder="Endereço Automático" value={formData.endereco} onChange={handleInputChange} className="flex-1 p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" />
               </div>
             </div>
@@ -205,9 +206,9 @@ const NewServiceIntegrated: React.FC = () => {
             <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
               <h2 className="text-xs font-black text-orange-500 uppercase tracking-widest mb-6 flex items-center gap-2"><Bike size={18}/> 2. Veículo</h2>
               <div className="grid grid-cols-2 gap-4">
-                <input type="text" name="marca" placeholder="Marca (Ex: Honda)" onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
-                <input type="text" name="modelo" placeholder="Modelo (Ex: Biz)" onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
-                <input type="text" name="placa" placeholder="PLACA" onChange={handleInputChange} className="p-4 bg-gray-900 text-white border-none rounded-2xl font-black text-center uppercase text-xl" required />
+                <input type="text" name="marca" placeholder="Marca (Ex: Honda)" value={formData.marca} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
+                <input type="text" name="modelo" placeholder="Modelo (Ex: Biz)" value={formData.modelo} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
+                <input type="text" name="placa" placeholder="PLACA" value={formData.placa} onChange={handleInputChange} className="p-4 bg-gray-900 text-white border-none rounded-2xl font-black text-center uppercase text-xl" required />
                 <input type="number" name="ano" placeholder="Ano" value={formData.ano} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" />
               </div>
             </div>
@@ -223,10 +224,10 @@ const NewServiceIntegrated: React.FC = () => {
               </select>
 
               <div className="grid grid-cols-2 gap-4">
-                <input type="number" name="kilometragem" placeholder="KM Atual" onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
+                <input type="number" name="kilometragem" placeholder="KM Atual" value={formData.kilometragem} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
                 <input type="datetime-local" name="data_inicio" value={formData.data_inicio} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
               </div>
-              <textarea name="descricao" placeholder="Relato do defeito..." onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-medium outline-none h-20" required />
+              <textarea name="descricao" placeholder="Relato do defeito..." value={formData.descricao} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-medium outline-none h-20" required />
             </div>
           </div>
 

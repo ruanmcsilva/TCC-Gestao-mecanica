@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
-import { 
-  Trash2, 
-  CreditCard, 
+import {
+  Trash2,
+  CreditCard,
   X,
   Zap,
   Percent,
@@ -12,17 +12,19 @@ import {
   QrCode,
   Banknote,
   Smartphone,
-  CheckCircle2 
+  CheckCircle2,
+  AlertTriangle
 } from 'lucide-react';
 import Select from 'react-select';
 
 const VendaBalcao: React.FC = () => {
+  const LOW_STOCK_LIMIT = 5;
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(false);
   const [allParts, setAllParts] = useState<any[]>([]);
-  const [selectedParts, setSelectedParts] = useState<{ peca: number; quantidade: number; preco: number; nome: string }[]>([]);
-  
+  const [selectedParts, setSelectedParts] = useState<{ peca: number; quantidade: number; preco: number; nome: string; estoque: number; isLowStock: boolean }[]>([]);
+
   const [descontoValor, setDescontoValor] = useState<number>(0);
   const [descontoPerc, setDescontoPerc] = useState<number>(0);
 
@@ -35,12 +37,30 @@ const VendaBalcao: React.FC = () => {
     api.get('/pecas/?page_size=1000').then(res => setAllParts(res.data.results));
   }, []);
 
-  const pecasOptions = allParts.map(p => ({
-    value: p.id,
-    label: `${p.nome} (R$ ${p.preco_venda})`,
-    preco: parseFloat(p.preco_venda || 0),
-    nome: p.nome
-  }));
+  const pecasOptions = allParts.map(p => {
+    const isLowStock = p.quantidade_em_estoque <= LOW_STOCK_LIMIT;
+    return {
+      value: p.id,
+      label: p.nome,
+      preco: parseFloat(p.preco_venda || 0),
+      nome: p.nome,
+      estoque: p.quantidade_em_estoque,
+      isLowStock: isLowStock
+    };
+  });
+
+  const formatOptionLabel = ({ label, preco, estoque, isLowStock }: any) => (
+    <div className="flex justify-between items-center w-full">
+      <div className="flex flex-col">
+        <span className="font-bold">{label}</span>
+        <span className="text-[10px] text-gray-400">R$ {preco.toFixed(2)}</span>
+      </div>
+      <div className={`text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1 ${isLowStock ? 'bg-red-500/20 text-red-500' : 'text-gray-400'}`}>
+        {isLowStock && <AlertTriangle size={12} />}
+        Estoque: {estoque}
+      </div>
+    </div>
+  );
 
   const handleAddPart = (option: any) => {
     if (!option) return;
@@ -48,18 +68,20 @@ const VendaBalcao: React.FC = () => {
     if (jaExiste) {
       updateQuantidade(option.value, jaExiste.quantidade + 1);
     } else {
-      setSelectedParts([...selectedParts, { 
-        peca: option.value, 
-        quantidade: 1, 
-        preco: option.preco, 
-        nome: option.nome 
+      setSelectedParts([...selectedParts, {
+        peca: option.value,
+        quantidade: 1,
+        preco: option.preco,
+        nome: option.nome,
+        estoque: option.estoque,
+        isLowStock: option.isLowStock
       }]);
     }
   };
 
   const updateQuantidade = (id: number, novaQtd: number) => {
     if (novaQtd < 1) return;
-    setSelectedParts(selectedParts.map(p => 
+    setSelectedParts(selectedParts.map(p =>
       p.peca === id ? { ...p, quantidade: novaQtd } : p
     ));
   };
@@ -116,7 +138,7 @@ const VendaBalcao: React.FC = () => {
     try {
       const dadosVenda = {
         cliente_nome: 'CONSUMIDOR PADRAO',
-        cliente_cpf: '', 
+        cliente_cpf: '',
         itens: selectedParts.map(p => ({
           codigo: p.peca,
           nome: p.nome,
@@ -133,14 +155,13 @@ const VendaBalcao: React.FC = () => {
 
       setVendaSucesso(true);
       showNotification('Venda autorizada na SEFAZ!', 'success');
-      
+
       setTimeout(() => {
         if (vendaRes.data.url_danfe) {
           window.open(vendaRes.data.url_danfe, '_blank');
         }
 
-        navigate('/venda-balcao');
-        setSelectedParts([]); 
+        setSelectedParts([]);
         setShowPagamento(false);
         setVendaSucesso(false);
         setLoading(false);
@@ -157,7 +178,7 @@ const VendaBalcao: React.FC = () => {
   return (
     <div className="bg-gray-50 min-h-screen font-sans p-4 md:p-8 flex items-center justify-center">
       <div className="w-full max-w-6xl bg-[#141414] rounded-[3rem] shadow-2xl overflow-hidden border border-white/5">
-        
+
         {/* HEADER */}
         <div className="p-8 flex justify-between items-center border-b border-white/5 bg-[#1a1a1a]">
           <div className="flex items-center gap-4">
@@ -185,6 +206,7 @@ const VendaBalcao: React.FC = () => {
             styles={selectStyles}
             onChange={handleAddPart}
             value={null}
+            formatOptionLabel={formatOptionLabel}
           />
         </div>
 
@@ -206,12 +228,17 @@ const VendaBalcao: React.FC = () => {
                   <tr key={index} className="group hover:bg-white/5 transition-all">
                     <td className="py-5 text-base font-bold text-white uppercase italic tracking-tight">{item.nome}</td>
                     <td className="py-5 text-center">
-                      <input 
-                        type="number" 
-                        value={item.quantidade} 
-                        onChange={(e) => updateQuantidade(item.peca, Number(e.target.value))}
-                        className="w-16 bg-white/10 border border-white/10 rounded-lg py-1 px-2 text-center font-black text-orange-500 focus:border-orange-500 outline-none"
-                      />
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <input
+                          type="number"
+                          value={item.quantidade}
+                          onChange={(e) => updateQuantidade(item.peca, Number(e.target.value))}
+                          className="w-16 bg-white/10 border border-white/10 rounded-lg py-1 px-2 text-center font-black text-orange-500 focus:border-orange-500 outline-none"
+                        />
+                        <span className={`text-[10px] font-bold flex items-center gap-1 ${item.isLowStock ? 'text-red-500' : 'text-gray-500'}`}>
+                          {item.isLowStock && <AlertTriangle size={10} />} Estoque: {item.estoque}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-5 text-right text-sm font-bold text-gray-400">R$ {item.preco.toFixed(2)}</td>
                     <td className="py-5 text-right text-lg font-black text-orange-500">R$ {(item.preco * item.quantidade).toFixed(2)}</td>
@@ -231,45 +258,45 @@ const VendaBalcao: React.FC = () => {
         <div className="p-8 bg-[#1a1a1a] border-t border-white/5">
           <div className="flex flex-col md:flex-row justify-between items-end gap-8">
             <div className="flex gap-4 items-end">
-                <div className="flex flex-col gap-2">
-                    <label className="text-[9px] font-black text-white uppercase tracking-widest">Desconto R$</label>
-                    <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white">R$</span>
-                        <input 
-                            type="text" 
-                            inputMode="decimal" 
-                            value={descontoValor || ''}
-                            onChange={(e) => handleDescontoValor(Number(e.target.value.replace(/[^0-9.]/g, '')))}
-                            className="bg-white/5 border border-white rounded-xl py-3 pl-8 pr-4 w-28 font-bold text-white placeholder-white focus:border-orange-500 outline-none transition-all"
-                            placeholder="0,00"
-                        />
-                    </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[9px] font-black text-white uppercase tracking-widest">Desconto R$</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white">R$</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={descontoValor || ''}
+                    onChange={(e) => handleDescontoValor(Number(e.target.value.replace(/[^0-9.]/g, '')))}
+                    className="bg-white/5 border border-white rounded-xl py-3 pl-8 pr-4 w-28 font-bold text-white placeholder-white focus:border-orange-500 outline-none transition-all"
+                    placeholder="0,00"
+                  />
                 </div>
+              </div>
 
-                <div className="flex flex-col gap-2">
-                    <label className="text-[9px] font-black text-white uppercase tracking-widest">Desconto %</label>
-                    <div className="relative">
-                        <Percent size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
-                        <input 
-                            type="text" 
-                            inputMode="numeric" 
-                            value={descontoPerc || ''}
-                            onChange={(e) => handleDescontoPerc(Number(e.target.value.replace(/\D/g, '')))}
-                            className="bg-white/5 border border-white rounded-xl py-3 pl-4 pr-10 w-24 font-bold text-white placeholder-white focus:border-orange-500 outline-none transition-all"
-                            placeholder="0"
-                        />
-                    </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[9px] font-black text-white uppercase tracking-widest">Desconto %</label>
+                <div className="relative">
+                  <Percent size={12} className="absolute right-3 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={descontoPerc || ''}
+                    onChange={(e) => handleDescontoPerc(Number(e.target.value.replace(/\D/g, '')))}
+                    className="bg-white/5 border border-white rounded-xl py-3 pl-4 pr-10 w-24 font-bold text-white placeholder-white focus:border-orange-500 outline-none transition-all"
+                    placeholder="0"
+                  />
                 </div>
-                
-                {(descontoValor > 0 || descontoPerc > 0) && (
-                    <button 
-                        type="button"
-                        onClick={() => {setDescontoValor(0); setDescontoPerc(0);}}
-                        className="mb-1 p-3 text-white hover:text-red-500 transition-colors cursor-pointer"
-                    >
-                        <MinusCircle size={20} />
-                    </button>
-                )}
+              </div>
+
+              {(descontoValor > 0 || descontoPerc > 0) && (
+                <button
+                  type="button"
+                  onClick={() => { setDescontoValor(0); setDescontoPerc(0); }}
+                  className="mb-1 p-3 text-white hover:text-red-500 transition-colors cursor-pointer"
+                >
+                  <MinusCircle size={20} />
+                </button>
+              )}
             </div>
 
             <div className="flex flex-col md:flex-row items-center gap-8 w-full md:w-auto">
@@ -283,15 +310,14 @@ const VendaBalcao: React.FC = () => {
                 </h2>
               </div>
 
-              <button 
-                type="button"
+              <button
                 onClick={handleAbrirCheckout}
                 disabled={loading || selectedParts.length === 0}
                 className={`
                   w-full md:w-auto px-10 py-5 rounded-2xl font-black text-lg uppercase tracking-wider
                   flex items-center justify-center gap-3 transition-all duration-300 cursor-pointer shadow-xl
                   ${loading || selectedParts.length === 0
-                    ? 'bg-white/5 text-gray-700 cursor-not-allowed' 
+                    ? 'bg-white/5 text-gray-700 cursor-not-allowed'
                     : 'bg-orange-500 text-white hover:bg-orange-600 hover:-translate-y-1 active:scale-95 shadow-orange-500/20'
                   }
                 `}
@@ -300,7 +326,7 @@ const VendaBalcao: React.FC = () => {
                   <span className="animate-pulse text-sm tracking-widest">SINCRO...</span>
                 ) : (
                   <>
-                    <CreditCard size={22} className="text-white" strokeWidth={2.5} /> 
+                    <CreditCard size={22} className="text-white" strokeWidth={2.5} />
                     <span className="text-white">Pagar</span>
                   </>
                 )}
@@ -318,18 +344,16 @@ const VendaBalcao: React.FC = () => {
               <div className="p-8 space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-xl font-black uppercase text-white tracking-tighter">Checkout</h2>
-                  <button type="button" onClick={() => setShowPagamento(false)} className="text-gray-500 hover:text-white cursor-pointer"><X size={24}/></button>
+                  <button onClick={() => setShowPagamento(false)} className="text-gray-500 hover:text-white cursor-pointer"><X size={24} /></button>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  {[{id: 'PIX', i: <QrCode size={16}/>}, {id: 'CARTÃO', i: <CreditCard size={16}/>}, {id: 'DÉBITO', i: <Smartphone size={16}/>}, {id: 'DINHEIRO', i: <Banknote size={16}/>}].map(m => (
+                  {[{ id: 'PIX', i: <QrCode size={16} /> }, { id: 'CARTÃO', i: <CreditCard size={16} /> }, { id: 'DÉBITO', i: <Smartphone size={16} /> }, { id: 'DINHEIRO', i: <Banknote size={16} /> }].map(m => (
                     <button
-                      type="button"
                       key={m.id}
                       onClick={() => setMetodoPagamento(m.id)}
-                      className={`p-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${
-                        metodoPagamento === m.id ? 'border-orange-500 bg-orange-500 text-black' : 'border-white/5 text-gray-500'
-                      }`}
+                      className={`p-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 transition-all cursor-pointer ${metodoPagamento === m.id ? 'border-orange-500 bg-orange-500 text-black' : 'border-white/5 text-gray-500'
+                        }`}
                     >
                       {m.i} {m.id}
                     </button>
@@ -340,12 +364,12 @@ const VendaBalcao: React.FC = () => {
                   {metodoPagamento === 'PIX' && <div className="text-center"><QrCode size={100} className="mx-auto opacity-20 text-white" /><p className="text-[9px] mt-2 text-gray-500 font-black uppercase">Aguardando...</p></div>}
                   {metodoPagamento === 'CARTÃO' && (
                     <select value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))} className="w-full p-4 bg-black rounded-xl border border-white/10 text-white font-bold outline-none">
-                      {[1,2,3,6,12].map(n => <option key={n} value={n}>{n}x de R$ {(totalComDesconto/n).toFixed(2)}</option>)}
+                      {[1, 2, 3, 6, 12].map(n => <option key={n} value={n}>{n}x de R$ {(totalComDesconto / n).toFixed(2)}</option>)}
                     </select>
                   )}
                 </div>
 
-                <button type="button" onClick={confirmarVendaFinal} className="w-full p-6 bg-white text-black font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-orange-500 shadow-xl transition-all">
+                <button onClick={confirmarVendaFinal} className="w-full p-6 bg-white text-black font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-orange-500 shadow-xl transition-all">
                   {loading ? "PROCESSANDO..." : "Finalizar e Emitir Nota"}
                 </button>
               </div>

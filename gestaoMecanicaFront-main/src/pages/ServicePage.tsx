@@ -2,12 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/api';
 import { useNavigate, Link } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
+import Select from 'react-select';
 
 // Interfaces mantidas...
 interface ServiceData {
   id: number;
   cliente: number;
-  moto: number;
+  cliente_nome?: string;
+  moto: number | '';
+  moto_placa?: string;
+  moto_modelo?: string;
+  responsavel: number | '';
   data_servico: string;
   observacoes?: string;
   kilometragem: number;
@@ -15,16 +20,18 @@ interface ServiceData {
   status: string;
 }
 interface ClienteData { id: number; nome: string; }
-interface MotoData { id: number; placa: string; modelo: string; }
+interface MotoData { id: number; placa: string; modelo: string; cliente: number; }
+interface FuncionarioData { id: number; first_name: string; username: string; }
 
 const ServicePage: React.FC = () => {
   const [services, setServices] = useState<ServiceData[]>([]);
   const [clients, setClients] = useState<ClienteData[]>([]);
   const [motos, setMotos] = useState<MotoData[]>([]);
+  const [funcionarios, setFuncionarios] = useState<FuncionarioData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [isFormVisible, setIsFormVisible] = useState<boolean>(false);
   const [newService, setNewService] = useState<Omit<ServiceData, 'id'>>({
-    cliente: 0, moto: 0, data_servico: '', observacoes: '', kilometragem: 0, descricao: '', status: 'PENDENTE'
+    cliente: 0, moto: '', responsavel: '', data_servico: '', observacoes: '', kilometragem: 0, descricao: '', status: 'PENDENTE'
   });
 
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -51,15 +58,17 @@ const ServicePage: React.FC = () => {
         exclude_balcao: 'true'
       };
 
-      const [resServ, resCli, resMoto] = await Promise.all([
+      const [resServ, resCli, resMoto, resFunc] = await Promise.all([
         api.get('/servicos/', { params }),
         api.get('/clientes/', { params: { page_size: 1000 } }),
         api.get('/motos/', { params: { page_size: 1000 } }),
+        api.get('/funcionarios/', { params: { page_size: 100 } }),
       ]);
 
       setServices(resServ.data.results);
       setClients(resCli.data.results);
       setMotos(resMoto.data.results);
+      setFuncionarios(resFunc.data.results || resFunc.data);
       setNextPageUrl(resServ.data.next);
       setPreviousPageUrl(resServ.data.previous);
 
@@ -105,7 +114,9 @@ const ServicePage: React.FC = () => {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    const finalValue = (name === 'kilometragem' || name === 'cliente' || name === 'moto') ? Number(value) : value;
+    const finalValue = (name === 'kilometragem' || name === 'cliente' || name === 'moto' || name === 'responsavel') 
+      ? (value === '' ? '' : Number(value)) 
+      : value;
     setNewService({ ...newService, [name]: finalValue });
   };
 
@@ -113,7 +124,7 @@ const ServicePage: React.FC = () => {
     e.preventDefault();
     try {
       await api.post('/servicos/', newService);
-      setNewService({ cliente: 0, moto: 0, data_servico: '', observacoes: '', kilometragem: 0, descricao: '', status: 'PENDENTE' });
+      setNewService({ cliente: 0, moto: '', responsavel: '', data_servico: '', observacoes: '', kilometragem: 0, descricao: '', status: 'PENDENTE' });
       setIsFormVisible(false);
       setCurrentPage(1);
       showNotification('Serviço aberto!', 'success');
@@ -130,14 +141,8 @@ const ServicePage: React.FC = () => {
     }
   };
 
-  const getClientName = (id: number) => clients.find(c => c.id === id)?.nome || '---';
-  const getMotoInfo = (id: number) => {
-    const m = motos.find(mo => mo.id === id);
-    return m ? { modelo: m.modelo, placa: m.placa } : { modelo: '---', placa: '---' };
-  };
-
   return (
-    <div className="p-6 bg-gray-50 min-h-screen font-sans">
+    <div className={`h-full flex flex-col font-sans ${isFormVisible ? 'overflow-y-auto' : 'overflow-hidden'}`}>
       <div className="flex justify-between items-center mb-8 gap-4">
         <div className="relative w-2/3">
           <span className="absolute inset-y-0 left-0 pl-3 flex items-center">
@@ -168,13 +173,24 @@ const ServicePage: React.FC = () => {
         <div className="bg-white shadow-lg rounded-xl p-6 mb-8 border-t-4 border-orange-500">
           <h2 className="text-xl font-bold mb-4 text-gray-800 uppercase">Abrir Nova Ordem</h2>
           <form onSubmit={handleAddService} className="grid grid-cols-2 gap-4">
-            <select name="cliente" value={newService.cliente} onChange={handleInputChange} className="p-2 border rounded outline-none font-bold cursor-pointer" required>
-              <option value="0">Selecione o Cliente</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+            <Select
+              name="cliente"
+              options={clients.map(c => ({ value: c.id, label: c.nome }))}
+              value={newService.cliente ? { value: newService.cliente, label: clients.find(c => c.id === newService.cliente)?.nome } : null}
+              onChange={(selectedOption) => {
+                setNewService({ ...newService, cliente: selectedOption ? selectedOption.value : 0, moto: '' });
+              }}
+              placeholder="Selecione o Cliente"
+              className="font-bold text-sm"
+              isClearable
+            />
+            <select name="moto" value={newService.moto} onChange={handleInputChange} className="p-2 border rounded outline-none font-bold cursor-pointer" required disabled={!newService.cliente}>
+              <option value="" disabled>Selecione a Moto</option>
+              {motos.filter(m => m.cliente === newService.cliente).map(m => <option key={m.id} value={m.id}>{m.placa} - {m.modelo}</option>)}
             </select>
-            <select name="moto" value={newService.moto} onChange={handleInputChange} className="p-2 border rounded outline-none font-bold cursor-pointer" required>
-              <option value="0">Selecione a Moto</option>
-              {motos.map(m => <option key={m.id} value={m.id}>{m.placa} - {m.modelo}</option>)}
+            <select name="responsavel" value={newService.responsavel} onChange={handleInputChange} className="p-2 border rounded outline-none font-bold cursor-pointer" required>
+              <option value="" disabled>Trabalhador que vai executar</option>
+              {funcionarios.map(f => <option key={f.id} value={f.id}>{f.first_name || f.username}</option>)}
             </select>
             <input type="date" name="data_servico" value={newService.data_servico} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
             <input type="number" name="kilometragem" placeholder="KM Atual" value={newService.kilometragem} onChange={handleInputChange} className="p-2 border rounded font-bold" required />
@@ -189,7 +205,7 @@ const ServicePage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Fila de Serviços</h2>
 
@@ -219,14 +235,13 @@ const ServicePage: React.FC = () => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-[10px]">Buscando na oficina...</p> : (
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50 flex-grow pr-2">
             {services.map(service => {
-              const motoInfo = getMotoInfo(service.moto);
               return (
                 <div key={service.id} className="grid grid-cols-5 gap-4 items-center px-2 py-4 hover:bg-blue-50 transition-all cursor-default text-center">
-                  <div className="text-gray-900 font-bold text-left uppercase text-[11px]">{getClientName(service.cliente)}</div>
-                  <div className="text-sm text-gray-600 font-medium">{motoInfo.modelo}</div>
-                  <div className="text-sm text-gray-600 font-mono font-bold tracking-tighter">{motoInfo.placa}</div>
+                  <div className="text-gray-900 font-bold text-left uppercase text-[11px]">{service.cliente_nome || '---'}</div>
+                  <div className="text-sm text-gray-600 font-medium">{service.moto_modelo || '---'}</div>
+                  <div className="text-sm text-gray-600 font-mono font-bold tracking-tighter">{service.moto_placa || '---'}</div>
                   <div className="flex justify-center">
                     <span className={`px-4 py-1 rounded-full text-[9px] font-black text-black uppercase ${service.status === 'CONCLUIDO' ? 'bg-green-400' :
                       service.status === 'PENDENTE' ? 'bg-yellow-400' : 'bg-blue-400'
