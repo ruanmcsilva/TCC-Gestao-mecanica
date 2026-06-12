@@ -7,13 +7,13 @@ import { useNotification } from '../contexts/NotificationContext';
 import { 
   Home, 
   Users, 
-  Bike, // Ajustado de Motorbike para Bike (padrão Lucide)
+  Bike, 
   HandPlatter,
   Cog,
   LogOut,
   FileText,
   Settings,
-  Clock // Importado para Histórico
+  Clock 
 } from 'lucide-react';
 
 import { useAuth } from '../contexts/AuthContext';

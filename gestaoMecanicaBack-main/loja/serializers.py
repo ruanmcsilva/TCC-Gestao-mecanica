@@ -25,9 +25,17 @@ class ClienteSerializer(serializers.ModelSerializer):
         model = Cliente
         fields = '__all__'
 
+    def to_internal_value(self, data):
+        if hasattr(data, '_mutable'):
+            data = data.copy()
+            
+        if data.get('cpf_cnpj') == "":
+            data['cpf_cnpj'] = None
+            
+        return super().to_internal_value(data)
+
 
 class MotoSerializer(serializers.ModelSerializer):
-    # Isso faz o Django enviar o nome do cliente em vez do ID
     cliente_nome = serializers.ReadOnlyField(source='cliente.nome') 
 
     class Meta:
@@ -36,9 +44,11 @@ class MotoSerializer(serializers.ModelSerializer):
 
 
 class ItemServicoPecaSerializer(serializers.ModelSerializer):
+    peca_nome = serializers.CharField(source='peca.nome', read_only=True)
+
     class Meta:
         model = ItemServicoPeca
-        fields = ['id', 'servico', 'peca', 'quantidade_utilizada', 'valor_unitario_na_epoca']
+        fields = ['id', 'servico', 'peca', 'peca_nome', 'quantidade_utilizada', 'valor_unitario_na_epoca']
 
 class FotoServicoSerializer(serializers.ModelSerializer):
     class Meta:

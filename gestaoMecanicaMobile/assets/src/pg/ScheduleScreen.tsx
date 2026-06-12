@@ -23,7 +23,7 @@ export default function ScheduleScreen({ navigation }: any) {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/agendamento/');
+      const response = await api.get('/agendamento/?page_size=1000');
       setSchedules(response.data.results || response.data);
     } catch (error) {
       console.error('Erro ao buscar agendamentos:', error);
@@ -34,7 +34,7 @@ export default function ScheduleScreen({ navigation }: any) {
   };
   const fetchClientes = async () => {
     try {
-      const response = await api.get('/clientes/');
+      const response = await api.get('/clientes/?page_size=1000');
       const clientesData = response.data.results || response.data;
       setClientes(clientesData.filter((c: any) => c.nome !== 'CONSUMIDOR PADRAO' && c.nome !== 'VENDA BALCÃO' && c.nome !== 'VENDA BALCAO'));
     } catch (error) {
@@ -43,7 +43,7 @@ export default function ScheduleScreen({ navigation }: any) {
   };
   const fetchMotos = async (clienteId: string) => {
     try {
-      const response = await api.get(`/motos/?cliente=${clienteId}`);
+      const response = await api.get(`/motos/?cliente=${clienteId}&page_size=1000`);
       setMotos(response.data.results || response.data);
     } catch (error) {
       console.error('Erro ao buscar motos:', error);

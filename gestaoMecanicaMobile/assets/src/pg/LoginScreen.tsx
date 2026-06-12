@@ -7,7 +7,8 @@ import * as Yup from 'yup';
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import api from '../config/api'; 
 import Feather from '@expo/vector-icons/Feather';
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // Importado para os novos ícones de rodapé
+import { MaterialCommunityIcons } from '@expo/vector-icons'; 
+import { useAuth } from '../contexts/AuthContext';
 
 type RootStackParamList = { Home: undefined; Cadastro: undefined; Login: undefined; AppHome: undefined; CadastroToken: undefined };
 type LoginScreenNavigationProp = NavigationProp<RootStackParamList, 'Login'>;
@@ -37,6 +38,7 @@ export default function LoginScreen(props: LoginProps) {
   const [newPass, setNewPass] = useState('');
   const [confirmPass, setConfirmPass] = useState('');
   const [modalLoading, setModalLoading] = useState(false);
+  const { fetchUser } = useAuth();
 
   const handleCreateAccount = async () => {
     if (!resetEmail) {
@@ -119,6 +121,8 @@ export default function LoginScreen(props: LoginProps) {
       if (props.onLoginSuccess) {
         props.onLoginSuccess(access); 
       }
+     
+      await fetchUser();
       navigation.replace('AppHome' as any); 
     } catch (error: any) {
       console.error(error);
@@ -198,7 +202,6 @@ export default function LoginScreen(props: LoginProps) {
           )}
         </Formik>
 
-        {/* --- AJUSTE DOS BOTÕES FINAIS LADO A LADO --- */}
         <View style={styles.footerRow}>
           <TouchableOpacity 
             style={styles.footerBtn} 
@@ -334,7 +337,6 @@ const styles = StyleSheet.create({
   rememberMeText: { color: '#9CA3AF', fontSize: 16, fontWeight: '500' },
   btn: { borderRadius: 50, marginTop: 16, backgroundColor: '#EE6B22', paddingVertical: 12 },
   
-  // NOVOS ESTILOS DE RODAPÉ
   footerRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 

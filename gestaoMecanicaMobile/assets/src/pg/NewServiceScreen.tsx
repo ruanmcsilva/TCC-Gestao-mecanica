@@ -9,11 +9,10 @@ import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../config/api';
 
-export default function NewServiceScreen({ navigation, route }: any) { // Adicionado route aqui
+export default function NewServiceScreen({ navigation, route }: any) { 
   const [loading, setLoading] = useState(false);
   const [allParts, setAllParts] = useState<any[]>([]);
 
-  // Estados dos formulários
   const [formData, setFormData] = useState({
     nome: '', 
     cpf_cnpj: '', 
@@ -30,7 +29,7 @@ export default function NewServiceScreen({ navigation, route }: any) { // Adicio
     profissional: '', 
   });
 
-  // --- BLOCO ADICIONADO PARA AUTO-PREENCHIMENTO DO SCANNER ---
+  
   useEffect(() => {
     if (route.params?.vehicleData) {
       const { placa, modelo, marca } = route.params.vehicleData;
@@ -42,7 +41,7 @@ export default function NewServiceScreen({ navigation, route }: any) { // Adicio
       }));
     }
   }, [route.params?.vehicleData]);
-  // ----------------------------------------------------------
+ 
 
   const [selectedParts, setSelectedParts] = useState<{ peca: number; quantidade: number; preco: number; nome: string }[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
@@ -297,7 +296,6 @@ export default function NewServiceScreen({ navigation, route }: any) { // Adicio
           />
         </View>
 
-        {/* 4. Peças */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Package color="#9333EA" size={20} />
@@ -332,7 +330,6 @@ export default function NewServiceScreen({ navigation, route }: any) { // Adicio
           ))}
         </View>
 
-        {/* 5. Fotos */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Camera color="#DB2777" size={20} />

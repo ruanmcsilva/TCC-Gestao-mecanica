@@ -52,14 +52,12 @@ const AgendamentosPage: React.FC = () => {
         status: 'PENDENTE'
       };
 
-      // Captura a resposta que agora contém o link gerado no backend
       const response = await api.post('agendamento/', payload);
 
       showNotification('Agendado com sucesso!', 'success');
       setShowModal(false);
       fetchAgendamentos();
 
-      // Abre o WhatsApp de confirmação
       if (response.data.whatsapp_link) {
         window.open(response.data.whatsapp_link, '_blank');
       }
@@ -75,13 +73,12 @@ const AgendamentosPage: React.FC = () => {
   }, []);
 
   const agendamentosDoDia = agendamentos.filter(ag => {
-    const dataAg = new Date(ag.data).toDateString();
+    const dataAg = new Date(`${ag.data}T00:00:00`).toDateString();
     return dataAg === dataSelecionada.toDateString();
   });
 
   return (
     <div className="p-6 bg-gray-50 h-full overflow-y-auto flex flex-col">
-      {/* HEADER CENTRALIZADO */}
       <div className="flex flex-col items-center text-center mb-8">
         <h1 className="text-3xl font-black text-gray-800 uppercase italic tracking-tighter">Agenda Técnica</h1>
         <p className="text-xs text-gray-400 font-bold uppercase mb-4">Controle de horários e produtividade</p>
@@ -95,7 +92,6 @@ const AgendamentosPage: React.FC = () => {
 
       <div className="max-w-4xl mx-auto space-y-8">
 
-        {/* CALENDÁRIO GRANDE E CENTRALIZADO */}
         <div className="bg-white p-4 md:p-8 rounded-[32px] shadow-sm border border-gray-100">
           <Calendar
             onChange={(val: any) => setDataSelecionada(val)}
@@ -108,7 +104,6 @@ const AgendamentosPage: React.FC = () => {
           />
         </div>
 
-        {/* LISTA DE PROGRAMAÇÃO ABAIXO */}
         <div className="space-y-4">
           <div className="flex items-center gap-2 px-2">
             <CalendarIcon size={16} className="text-orange-500" />
@@ -144,7 +139,6 @@ const AgendamentosPage: React.FC = () => {
         </div>
       </div>
 
-      {/* ESTILOS PARA O CALENDÁRIO FICAR GIGANTE */}
       <style>{`
         .calendar-xl {
           width: 100% !important;
@@ -181,7 +175,6 @@ const AgendamentosPage: React.FC = () => {
         }
       `}</style>
 
-      {/* MODAL MANTIDO IGUAL AO SEU */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl animate-in zoom-in duration-300">

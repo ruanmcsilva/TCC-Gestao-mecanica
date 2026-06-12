@@ -14,7 +14,6 @@ export default function ClientHistoryScreen({ route, navigation }: any) {
     
     try {
       setLoading(true);
-      // Rota exata do seu Django: /api/v1/clientes/<id>/historico/
       const response = await api.get(`/clientes/${client.id}/historico/`);
       setHistory(response.data);
     } catch (error) {
@@ -28,10 +27,10 @@ export default function ClientHistoryScreen({ route, navigation }: any) {
     fetchHistory();
   }, [client?.id]);
 
-  // Função simples para formatar a data (AAAA-MM-DD para DD/MM/AAAA)
   const formatDate = (dateString: string) => {
     if (!dateString) return '--/--/----';
-    const [year, month, day] = dateString.split('-');
+    const datePart = dateString.split('T')[0];
+    const [year, month, day] = datePart.split('-');
     return `${day}/${month}/${year}`;
   };
 
@@ -72,10 +71,10 @@ export default function ClientHistoryScreen({ route, navigation }: any) {
               <View style={styles.cardHeader}>
                 <View style={styles.titleRow}>
                   <Wrench color="#EE6B22" size={20} />
-                  <Text style={styles.serviceName}>{item.descricao_servico || item.service || 'Serviço'}</Text>
+                  <Text style={styles.serviceName}>{item.descricao || item.descricao_servico || item.service || 'Serviço'}</Text>
                 </View>
                 <Text style={styles.servicePrice}>
-                   R$ {item.total || item.valor_total || '0,00'}
+                   R$ {item.valor_total_servico !== undefined ? parseFloat(item.valor_total_servico).toFixed(2).replace('.', ',') : item.total || item.valor_total || '0,00'}
                 </Text>
               </View>
 
@@ -84,11 +83,11 @@ export default function ClientHistoryScreen({ route, navigation }: any) {
               <View style={styles.cardBody}>
                 <View style={styles.infoCol}>
                   <Text style={styles.label}>Data</Text>
-                  <Text style={styles.value}>{formatDate(item.data_conclusao || item.data)}</Text>
+                  <Text style={styles.value}>{formatDate(item.data_fim || item.data_inicio || item.data_conclusao || item.data)}</Text>
                 </View>
                 <View style={styles.infoCol}>
                   <Text style={styles.label}>Mecânico</Text>
-                  <Text style={styles.value}>{item.mecanico_nome || item.mecanico || 'Oficina'}</Text>
+                  <Text style={styles.value}>{item.responsavel_nome || item.mecanico_nome || item.mecanico || 'Oficina'}</Text>
                 </View>
                 <View style={styles.infoCol}>
                   <Text style={styles.label}>Status</Text>

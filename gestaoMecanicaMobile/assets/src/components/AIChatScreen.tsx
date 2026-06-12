@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'; // Adicionado useEffect
+import React, { useState, useRef, useEffect } from 'react'; 
 import { 
   View, Text, TextInput, FlatList, TouchableOpacity, 
   KeyboardAvoidingView, Platform, ActivityIndicator, StyleSheet 
@@ -36,7 +36,6 @@ const AIChatScreen = ({ route }: any) => {
 
     const authToken = token || await AsyncStorage.getItem('@app_token');
 
-    // Se o token não estiver aqui, nem tenta a requisição para evitar o 401
     if (!authToken) {
       const errorMsg: Message = { 
         id: Date.now().toString(), 
@@ -54,13 +53,12 @@ const AIChatScreen = ({ route }: any) => {
     setLoading(true);
 
     try {
-      // Ajuste o IP conforme a rede do seu Dell G15 em Maceió
       const response = await api.post(
         '/ai/consultar/', 
         { pergunta: currentInput },
         { 
           headers: { 
-            'Authorization': `Bearer ${authToken}`, // Garantindo o formato Bearer
+            'Authorization': `Bearer ${authToken}`, 
             'Content-Type': 'application/json'
           } 
         }

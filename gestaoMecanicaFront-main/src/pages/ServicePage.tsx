@@ -4,7 +4,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import Select from 'react-select';
 
-// Interfaces mantidas...
 interface ServiceData {
   id: number;
   cliente: number;
@@ -37,7 +36,6 @@ const ServicePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('');
 
-  // NOVOS ESTADOS PARA PAGINAÇÃO
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [inputPage, setInputPage] = useState<string>('1');
@@ -72,7 +70,6 @@ const ServicePage: React.FC = () => {
       setNextPageUrl(resServ.data.next);
       setPreviousPageUrl(resServ.data.previous);
 
-      // Cálculo do total de páginas
       const total = Math.ceil(resServ.data.count / 10);
       setTotalPages(total || 1);
       setInputPage(currentPage.toString());
@@ -91,7 +88,6 @@ const ServicePage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [fetchData]);
 
-  // Função para pular direto para uma página
   const handleJumpPage = () => {
     const pageNum = parseInt(inputPage);
     if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
@@ -205,7 +201,7 @@ const ServicePage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Fila de Serviços</h2>
 
@@ -235,7 +231,7 @@ const ServicePage: React.FC = () => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-[10px]">Buscando na oficina...</p> : (
-          <div className="divide-y divide-gray-50 flex-grow pr-2">
+          <div className="divide-y divide-gray-50 flex-grow overflow-y-auto pr-2">
             {services.map(service => {
               return (
                 <div key={service.id} className="grid grid-cols-5 gap-4 items-center px-2 py-4 hover:bg-blue-50 transition-all cursor-default text-center">
@@ -260,7 +256,6 @@ const ServicePage: React.FC = () => {
           </div>
         )}
 
-        {/* PAGINAÇÃO COM PULO DIRETO */}
         <div className="flex justify-between items-center mt-10 pt-4 border-t border-gray-100 font-black uppercase text-xs">
           <button
             onClick={() => setCurrentPage(p => p - 1)}

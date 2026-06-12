@@ -197,7 +197,7 @@ const PartPage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Peças</h2>
         </div>
@@ -213,7 +213,7 @@ const PartPage: React.FC = () => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Carregando estoque...</p> : (
-          <div className="divide-y divide-gray-50 flex-grow pr-2">
+          <div className="divide-y divide-gray-50 flex-grow overflow-y-auto pr-2">
             {parts.length > 0 ? parts.map(part => {
               const isLowStock = part.quantidade_em_estoque <= LOW_STOCK_LIMIT;
               return (

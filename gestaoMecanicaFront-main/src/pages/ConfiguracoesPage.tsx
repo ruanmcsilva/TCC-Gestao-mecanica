@@ -305,7 +305,6 @@ const handlePasswordChange = async (e: React.FormEvent) => {
         ))}
       </div>
 
-      {/* MODAL DE DESATIVAÇÃO */}
       {isDeactivateModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-white p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl border border-red-50">

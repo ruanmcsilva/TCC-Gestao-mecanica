@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/api';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
-// Importamos o ícone de relógio para manter o padrão se necessário, mas aqui foquei no código corrido
 import { Clock } from 'lucide-react'; 
 import Select from 'react-select';
 
@@ -68,7 +67,6 @@ const MotoPage: React.FC = () => {
       setNextPageUrl(motosRes.data.next);
       setPreviousPageUrl(motosRes.data.previous);
 
-      // Cálculo do total de páginas baseado no count do Django (padrão 10 itens)
       const total = Math.ceil(motosRes.data.count / 10);
       setTotalPages(total || 1);
       setInputPage(page.toString());
@@ -84,7 +82,6 @@ const MotoPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [currentPage, searchTerm, fetchData]);
 
-  // Função para pular para página específica
   const handleJumpPage = () => {
     const pageNum = parseInt(inputPage);
     if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= totalPages) {
@@ -208,7 +205,7 @@ const MotoPage: React.FC = () => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Motos</h2>
           {searchTerm && <span className="text-[10px] font-black bg-blue-100 text-blue-600 px-3 py-1 rounded-full uppercase">{motos.length} Encontrada(s)</span>}
@@ -224,7 +221,7 @@ const MotoPage: React.FC = () => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Carregando...</p> : (
-          <div className="divide-y divide-gray-50 flex-grow pr-2">
+          <div className="divide-y divide-gray-50 flex-grow overflow-y-auto pr-2">
             {motos.map(moto => {
               const clienteInfo = getClientData(moto.cliente);
               return (
@@ -243,7 +240,6 @@ const MotoPage: React.FC = () => {
           </div>
         )}
 
-        {/* PAGINAÇÃO COM PULO DE PÁGINA */}
         <div className="flex justify-between items-center mt-10 pt-4 border-t border-gray-100 font-black uppercase text-xs">
           <button 
             onClick={() => setCurrentPage(p => p - 1)} 

@@ -6,13 +6,9 @@ import api from '../config/api';
 
 export default function VehicleDetailsScreen({ route, navigation }: any) {
   const { vehicle } = route.params || {};
-  
   const [loading, setLoading] = useState(false);
-  
-  // Estados para exibição e salvamento
   const [clienteNome] = useState(vehicle?.cliente_nome || 'Não identificado');
   const [clienteId] = useState(vehicle?.cliente || '');
-  
   const [placa, setPlaca] = useState(vehicle?.placa || '');
   const [marca, setMarca] = useState(vehicle?.marca || '');
   const [modelo, setModelo] = useState(vehicle?.modelo || '');
@@ -65,7 +61,6 @@ export default function VehicleDetailsScreen({ route, navigation }: any) {
 
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* PROPRIETÁRIO (Apenas Leitura) */}
         <Text style={styles.label}>Proprietário(a)</Text>
         <View style={styles.clientDisplay}>
           <User color="#EE6B22" size={20} />

@@ -25,22 +25,18 @@ export default function ScannerPlaca({ navigation }: any) {
     setScanned(true);
     setLoading(true);
     
-    // Limpa o texto lido para evitar espaços ou quebras de linha
     const placaLimpa = data.trim().toUpperCase();
 
     try {
-      // AJUSTADO: Agora batendo com o path('consulta/...') do seu urls.py
       const response = await api.get(`/consulta/placa/${placaLimpa}/`);
       const veiculo = response.data;
 
       console.log("Dados recebidos:", veiculo);
 
-      // SUBSTITUÍDO navigate POR replace: Remove a câmera do histórico
       navigation.replace('NewService', { vehicleData: veiculo });
 
     } catch (error) {
       console.log("Erro na API ou Rota não encontrada, indo para manual...");
-      // SUBSTITUÍDO navigate POR replace: Evita voltar para a câmera ao cancelar
       navigation.replace('NewService'); 
 
     } finally {
@@ -56,10 +52,9 @@ export default function ScannerPlaca({ navigation }: any) {
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
       />
       
-      {/* BOTÃO PARA CANCELAR E IR PRO MANUAL */}
       <TouchableOpacity 
         style={styles.btnPular} 
-        onPress={() => navigation.replace('NewService')} // Ajustado para replace também
+        onPress={() => navigation.replace('NewService')} 
       >
         <Text style={styles.btnTextPular}>Cancelar e fazer manual</Text>
         <MaterialCommunityIcons name="close-circle" size={24} color="white" />

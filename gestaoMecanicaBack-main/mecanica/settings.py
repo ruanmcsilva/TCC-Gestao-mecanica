@@ -4,10 +4,14 @@ import os
 FOCUSNFE_TOKEN = os.getenv("FOCUSNFE_TOKEN", "token_de_teste_caso_nao_haja_env")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-SECRET_KEY = 'django-insecure-2^(71(0r_+fkji1u7=x0dgke+dejhsu(^4z2%h6n7a3@5sxlum'
-DEBUG = True
-ALLOWED_HOSTS = ['192.168.0.123', 'localhost', '127.0.0.1']
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "AIzaSyAdxY2aZeGqVjJTzp8jeYjG7YfEKx8kPBU")
+
+# Security Settings
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-key')
+DEBUG = os.getenv('DJANGO_DEBUG', 'False') == 'True'
+ALLOWED_HOSTS = os.getenv('DJANGO_ALLOWED_HOSTS', '192.168.0.123,localhost,127.0.0.1').split(',')
+
+# Gemini Config
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 INSTALLED_APPS = [
@@ -29,6 +33,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -60,11 +65,11 @@ WSGI_APPLICATION = 'mecanica.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'gestao_mecanica',
-        'USER': 'admin',
-        'PASSWORD': 'admin', 
-        'HOST': 'db',            
-        'PORT': '5432',
+        'NAME': os.getenv('POSTGRES_DB', 'gestao_mecanica'),
+        'USER': os.getenv('POSTGRES_USER', 'admin'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'admin'), 
+        'HOST': os.getenv('POSTGRES_HOST', 'db'),            
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -81,17 +86,11 @@ TIME_ZONE = 'America/Maceio'
 USE_I18N = True
 USE_TZ = True
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://192.168.0.123:5173", 
-]
-CSRF_TRUSTED_ORIGINS = [
-    "http://192.168.0.123",
-    "http://localhost:8000",
-]
+CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://127.0.0.1:5173,http://192.168.0.123:5173').split(',')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://192.168.0.123,http://localhost:8000').split(',')
 
 STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Configuração DRF e JWT
@@ -100,10 +99,8 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
-    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_PAGINATION_CLASS': 'loja.pagination.StandardPagination',
     'PAGE_SIZE': 10,
-    'PAGE_SIZE_QUERY_PARAM': 'page_size',
-    'MAX_PAGE_SIZE': 1000,
 }
 
 REST_AUTH = {
@@ -130,20 +127,20 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'ruanmcs2@gmail.com'
-EMAIL_HOST_PASSWORD = 'qqvrnqqxbjprunyy' 
-DEFAULT_FROM_EMAIL = 'Space Motos <ruanmcs2@gmail.com>'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '') 
+DEFAULT_FROM_EMAIL = f"Space Motos <{EMAIL_HOST_USER}>"
 EMAIL_TIMEOUT = 10  
-FOCUSNFE_TOKEN = os.getenv("FOCUSNFE_TOKEN", "coloque_aqui_seu_token_de_homologacao")
-FOCUSNFE_AMBIENTE = "homologacao"  
+FOCUSNFE_TOKEN = os.getenv("FOCUSNFE_TOKEN")
+FOCUSNFE_AMBIENTE = os.getenv("FOCUSNFE_AMBIENTE", "homologacao")  
 
 
 EMPRESA_FISCAL = {
-    "cnpj": "00000000000100",          # CNPJ real ou de teste
-    "inscricao_estadual": "00000000",  # IE de Alagoas
+    "cnpj": "00000000000100",         
+    "inscricao_estadual": "00000000",  
     "nome_fantasia": "Mecânica Space",
     "razao_social": "Ruan Gestao Automotiva LTDA",
-    "regime_tributario": 1,            # 1 para Simples Nacional (comum em oficinas)
+    "regime_tributario": 1,
     "endereco": {
         "logradouro": "Avenida Principal",
         "numero": "123",

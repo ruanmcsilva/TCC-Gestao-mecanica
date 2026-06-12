@@ -41,7 +41,8 @@ from datetime import timedelta
 import os
 from .models import (
     Fornecedor, GrupoPeca, Peca, Cliente, Moto, Servico, 
-    ItemServicoPeca, MovimentacaoEstoque, FotoServico, Convite, Agendamento
+    ItemServicoPeca, MovimentacaoEstoque, FotoServico, Convite, Agendamento,
+    NotaFiscalPendente
 )
 from .serializers import (
     FornecedorSerializer, GrupoPecaSerializer, PecaSerializer, ClienteSerializer, 
@@ -49,7 +50,6 @@ from .serializers import (
     MovimentacaoEstoqueSerializer, UserSerializer, FotoServicoSerializer,AgendamentoSerializer
 )
 
-# --- Autenticação e Registro ---
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     pass
@@ -75,7 +75,6 @@ class RegisterView(viewsets.ViewSet):
             "token": token_serializer.validated_data
         }, status=status.HTTP_201_CREATED)
 
-# --- Fluxo de Convites e Solicitações ---
 
 class SolicitacaoAcessoView(APIView):
     """ Chamada pelo modal 'Criar Conta' no Login """
@@ -86,7 +85,6 @@ class SolicitacaoAcessoView(APIView):
         if not email_cliente:
             return Response({"error": "E-mail é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Salva o convite como pendente no banco
         convite, created = Convite.objects.get_or_create(email=email_cliente)
 
         assunto = f"Solicitação de Acesso: {email_cliente}"
@@ -170,7 +168,7 @@ class RegistrarComTokenView(APIView):
             is_staff=is_staff
         )
 
-        convite.delete() # Remove o convite após o uso
+        convite.delete() 
 
         return Response({"message": "Conta criada com sucesso!"}, status=status.HTTP_201_CREATED)
 
@@ -195,7 +193,6 @@ def listar_convites(request):
     } for c in convites]
     return Response(data)
 
-# --- Utilitários e Sessão ---
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -216,12 +213,8 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
     except Exception as e:
         print(f"Erro no envio do email de recuperação de senha: {e}")
 
-# --- ViewSets para CRUD ---
 
-class StandardPagination(PageNumberPagination):
-    page_size = 10
-    page_size_query_param = 'page_size'
-    max_page_size = 1000
+
 
 class FornecedorViewSet(viewsets.ModelViewSet):
     queryset = Fornecedor.objects.all(); serializer_class = FornecedorSerializer; permission_classes = [IsAuthenticated]
@@ -235,6 +228,11 @@ class PecaViewSet(viewsets.ModelViewSet):
 
 class ClienteViewSet(viewsets.ModelViewSet):
     queryset = Cliente.objects.all()
+
+    def get_queryset(self):
+        if self.action == 'list':
+            return Cliente.objects.exclude(nome="CONSUMIDOR PADRAO").order_by('-id')
+        return Cliente.objects.all().order_by('-id')
     serializer_class = ClienteSerializer
     permission_classes = [IsAuthenticated]
     
@@ -242,13 +240,10 @@ class ClienteViewSet(viewsets.ModelViewSet):
     search_fields = ['nome', 'cpf_cnpj', 'telefone']
 
     def create(self, request, *args, **kwargs):
-        # 1. Executa o cadastro normal do cliente
         response = super().create(request, *args, **kwargs)
         
-        # 2. Busca a instância criada para pegar o nome e telefone
         instance = Cliente.objects.get(pk=response.data['id'])
         
-        # 3. Prepara a mensagem de boas-vindas
         msg = (
             f"Olá *{instance.nome}*! 👋\n\n"
             f"Seja bem-vindo(a) à *Oficina do Ruan*. "
@@ -256,7 +251,6 @@ class ClienteViewSet(viewsets.ModelViewSet):
             f"Sempre que precisar de manutenção para sua moto, estamos à disposição. 🛠️🏍️"
         )
         
-        # 4. Adiciona o link ao JSON de resposta
         if instance.telefone:
             response.data['whatsapp_link'] = formatar_zap_link(instance.telefone, msg)
         else:
@@ -280,9 +274,8 @@ class ItemServicoPecaViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = ItemServicoPeca.objects.all()
-        servico_id = self.request.query_params.get('servico') # Pega o ID da URL
+        servico_id = self.request.query_params.get('servico') 
         if servico_id is not None:
-            # Filtra APENAS os itens daquele serviço
             queryset = queryset.filter(servico_id=servico_id)
         return queryset
 
@@ -306,7 +299,6 @@ class ServicoViewSet(viewsets.ModelViewSet):
     ordering_fields = ['data_inicio', 'data_fim', 'id']
     ordering = ['-data_inicio']
     
-    # ATUALIZADO: Agora busca por Descrição, Placa, Nome do Cliente e Modelo da Moto
     search_fields = ['descricao', 'moto__placa', 'cliente__nome', 'moto__modelo']
 
 
@@ -314,9 +306,6 @@ class ServicoViewSet(viewsets.ModelViewSet):
     def imprimir_os(self, request, pk=None):
         servico = self.get_object()
         
-        # BUSCANDO O CAMINHO DA LOGO NA PASTA DE TEMPLATES
-        # O Django geralmente procura em: sua_app/templates/loja/logo.png
-        # BASE_DIR é a raiz do seu projeto backend
         logo_path = os.path.join(settings.BASE_DIR, 'loja', 'templates', 'loja', 'logo.png')
 
         context = {
@@ -324,12 +313,10 @@ class ServicoViewSet(viewsets.ModelViewSet):
             'cliente': servico.cliente, 
             'moto': servico.moto, 
             'itens': servico.itens_servico_peca.all(),
-            'logo_path': logo_path # <--- ESSENCIAL PARA O HTML
+            'logo_path': logo_path 
         }
         
         html_string = render_to_string('loja/os.html', context)
-        
-        # DICA: Removi o base_url e deixei o WeasyPrint buscar os arquivos internos
         pdf = HTML(string=html_string).write_pdf()
         
         response = HttpResponse(pdf, content_type='application/pdf')
@@ -351,10 +338,9 @@ class DeactivateAccountView(APIView):
 
     def post(self, request):
         user = request.user
-        user.is_active = False  # Desativa o usuário (ele não conseguirá mais logar)
+        user.is_active = False 
         user.save()
         return Response({"detail": "Conta desativada com sucesso."}, status=200)
-# --- Relatórios ---
 
 from django.db.models import Sum, F, Q, DecimalField
 from django.db.models.functions import Coalesce
@@ -362,23 +348,19 @@ from django.db.models.functions import Coalesce
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def financial_report(request):
-    # Captura os parâmetros
     mes_param = request.query_params.get('mes')
     ano_param = request.query_params.get('ano')
     periodo = request.query_params.get('periodo', 'mes')
 
-    # 1. Base do filtro: Sempre serviços CONCLUIDOS
     filtros = Q(status='CONCLUIDO')
 
     try:
         if periodo == 'mes':
-            # Validação rigorosa apenas para o filtro mensal
             if not mes_param or not ano_param:
                 return Response({"error": "Mês e Ano são obrigatórios para filtro mensal"}, status=400)
             filtros &= Q(data_fim__month=int(mes_param), data_fim__year=int(ano_param))
         
         elif periodo == '6meses':
-            # Para 6 meses, ignoramos o mês/ano do seletor e calculamos retroativo
             data_limite = timezone.now() - timedelta(days=180)
             filtros &= Q(data_fim__gte=data_limite)
         
@@ -387,16 +369,13 @@ def financial_report(request):
                 return Response({"error": "Ano é obrigatório para filtro anual"}, status=400)
             filtros &= Q(data_fim__year=int(ano_param))
 
-        # 2. Execução da busca
         servicos = Servico.objects.filter(filtros)
         servicos_ids = servicos.values_list('id', flat=True)
     
-        # --- CÁLCULOS FINANCEIROS ---
         total_mao_de_obra = servicos.aggregate(
             total=Coalesce(Sum('valor_mao_de_obra'), 0, output_field=DecimalField())
         )['total']
 
-        # Peças com select_related para performance no Dell G15
         itens = ItemServicoPeca.objects.filter(servico_id__in=servicos_ids).select_related('peca')
 
         total_pecas_receita = 0
@@ -423,7 +402,6 @@ def financial_report(request):
         })
 
     except Exception as e:
-        # Log detalhado no terminal do Docker
         print(f"--- ERRO RELATÓRIO FINANCEIRO ---")
         print(f"Tipo: {type(e).__name__}")
         print(f"Mensagem: {str(e)}")
@@ -454,7 +432,6 @@ def client_history(request, pk=None):
 def consulta_api_externa(request, tipo, valor):
     import requests
     
-    # 1. LÓGICA DE PLACA COM FALLBACK (PLANO B)
     if tipo == 'placa':
         placa_limpa = str(valor).strip().upper().replace('-', '')
         url = f"https://brasilapi.com.br/api/fipe/veiculos/v1/{placa_limpa}"
@@ -472,11 +449,9 @@ def consulta_api_externa(request, tipo, valor):
                     "status": "API Real"
                 }, status=200)
             
-            # Se a placa não for encontrada, em vez de erro, manda um dado de teste
             raise Exception("Fallback necessário")
 
         except Exception:
-            # DADOS DE TESTE: Isso garante que seu TCC sempre funcione na apresentação
             return Response({
                 "placa": placa_limpa,
                 "modelo": "Honda CG 160 Titan (Simulação)",
@@ -485,7 +460,6 @@ def consulta_api_externa(request, tipo, valor):
                 "status": "Modo de Demonstração",
             }, status=200)
 
-    # 2. LOGICA ORIGINAL (CEP, CPF, CNPJ) - SEM ALTERAÇÕES
     valor_limpo = ''.join(filter(str.isdigit, str(valor)))
 
     if tipo == 'cep':
@@ -516,12 +490,10 @@ def consulta_api_externa(request, tipo, valor):
 
     return Response({"error": "Tipo inválido"}, status=400)
 
-# NOTA FISCAL
 def imprimir_cupom_fiscal(request, venda_id):
     venda = Servico.objects.get(id=venda_id)
     itens = ItensServico.objects.filter(servico=venda)
     
-    # Geramos o link do QR Code (Simulando consulta na SEFAZ ou Pix)
     qr_code_url = f"https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=http://mecanicaspace.com/venda/{venda.id}"
 
     context = {
@@ -538,7 +510,6 @@ def imprimir_cupom_fiscal(request, venda_id):
     html = render_to_string('cupom_fiscal_termico.html', context)
     return HttpResponse(html)
 
-# --- AÇÃO ÚNICA DE FINALIZAÇÃO (BALCÃO OU OS) ---
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def finalizar_venda_completa(request):
@@ -548,7 +519,6 @@ def finalizar_venda_completa(request):
     
     try:
         with transaction.atomic():
-            # 1. Busca ou Cria a Venda
             if venda_id:
                 venda = Servico.objects.select_for_update().get(id=venda_id)
             else:
@@ -568,7 +538,6 @@ def finalizar_venda_completa(request):
                         valor_unitario_na_epoca=it['valor_unitario']
                     )
 
-            # 2. Verificação e Baixa de Estoque
             itens = ItemServicoPeca.objects.filter(servico=venda)
             for item in itens:
                 p = item.peca
@@ -586,8 +555,6 @@ def finalizar_venda_completa(request):
                     servico_relacionado=venda, origem_destino="VENDA FINALIZADA"
                 )
 
-            # --- AJUSTE: MOVido PARA DENTRO DO ATOMIC ---
-            # 3. Finaliza a OS no Banco de Dados
             venda.status = 'CONCLUIDO'
             venda.data_fim = timezone.now() 
             if venda_id:
@@ -595,7 +562,6 @@ def finalizar_venda_completa(request):
             venda.save() 
             # ------------------------------------------
 
-        # 4. Serviço Fiscal (Fora do atomic para não travar o banco com latência de API externa)
         url_danfe = None
         try:
             fiscal = FiscalService()
@@ -604,7 +570,6 @@ def finalizar_venda_completa(request):
         except Exception:
             url_danfe = "https://homologacao.focusnfe.com.br/danfe/exemplo"
 
-        # 5. Lógica do WhatsApp
         whatsapp_link = None
         if venda.cliente and venda.cliente.telefone:
             valor_total = venda.valor_total_servico
@@ -628,14 +593,10 @@ def finalizar_venda_completa(request):
 
     except Exception as e:
         return Response({"erro": str(e)}, status=500)
-# MANTÉM O ATALHO PARA O URLS.PY
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def finalizar_venda_balcao_completa(request):
     return finalizar_venda_completa(request)
-
-
-##  GRAVICOS RELATORIOS
 
 class DashboardAnaliticoView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -649,7 +610,6 @@ class DashboardAnaliticoView(APIView):
 
         periodo_selecionado = request.query_params.get('periodo', 'mes')
         
-        # 1. Carregar Serviços (Removido o campo inexistente 'valor_total_servico')
         servicos = Servico.objects.filter(status='CONCLUIDO').values(
             'id', 'data_fim', 'valor_mao_de_obra', 
             'responsavel__username', 'descricao'
@@ -660,10 +620,8 @@ class DashboardAnaliticoView(APIView):
 
         df_servicos = pd.DataFrame(list(servicos))
         df_servicos['data_fim'] = pd.to_datetime(df_servicos['data_fim'])
-        # Garantir que mao de obra seja float
         df_servicos['valor_mao_de_obra'] = df_servicos['valor_mao_de_obra'].astype(float)
 
-        # 2. Carregar Itens de Peças
         itens = ItemServicoPeca.objects.filter(servico__status='CONCLUIDO').values(
             'servico_id', 'quantidade_utilizada', 'valor_unitario_na_epoca', 'peca__preco_custo'
         )
@@ -681,17 +639,11 @@ class DashboardAnaliticoView(APIView):
         else:
             resumo_pecas = pd.DataFrame(columns=['servico_id', 'total_venda_peca', 'total_custo_peca'])
 
-        # 3. UNIR (Merge) - Usando how='left' para manter todos os serviços
         df_final = pd.merge(df_servicos, resumo_pecas, left_on='id', right_on='servico_id', how='left')
         
-        # EM VEZ DE .fillna(0) no DF todo, preenchemos apenas as colunas financeiras
         colunas_financeiras = ['total_venda_peca', 'total_custo_peca']
         df_final[colunas_financeiras] = df_final[colunas_financeiras].fillna(0)
-        
-        # CÁLCULO DO TOTAL: Mão de Obra + Venda de Peças
         df_final['valor_total_calculado'] = df_final['valor_mao_de_obra'] + df_final['total_venda_peca']
-
-        # 4. Lógica de Tempo (Siglas para Pandas 2.2+)
         mapa = {
             'dia': 'D', 
             'quinzena': '15D', 
@@ -701,10 +653,7 @@ class DashboardAnaliticoView(APIView):
             'ano': 'YE'
         }
         regra = mapa.get(periodo_selecionado, 'ME')
-
-        # Garantimos que a data_fim seja o índice para o resample não falhar
         df_final = df_final.set_index('data_fim')
-
         timeline = df_final.resample(regra).agg({
             'valor_mao_de_obra': 'sum',
             'total_venda_peca': 'sum',
@@ -713,8 +662,6 @@ class DashboardAnaliticoView(APIView):
         }).reset_index()
         
         timeline['data_rotulo'] = timeline['data_fim'].dt.strftime('%d/%m/%y')
-
-        # --- ANÁLISE FUNCIONÁRIO ---
         produtividade = df_final.groupby('responsavel__username').agg({
             'valor_total_calculado': 'sum',
             'id': 'count'
@@ -723,7 +670,6 @@ class DashboardAnaliticoView(APIView):
         total_geral = df_final['valor_total_calculado'].sum()
         produtividade['percentual'] = (produtividade['valor_total_calculado'] / total_geral * 100).round(1) if total_geral > 0 else 0
 
-        # --- ANÁLISE PAGAMENTO ---
         def extrair_pagamento(desc):
             desc_upper = str(desc).upper()
             for p in ['PIX', 'CARTÃO', 'DINHEIRO', 'DÉBITO']:
@@ -745,7 +691,6 @@ class DashboardAnaliticoView(APIView):
         })
     
 
-    #Agendamento
 
 class AgendamentoViewSet(viewsets.ModelViewSet):
     queryset = Agendamento.objects.all()
@@ -759,13 +704,8 @@ class AgendamentoViewSet(viewsets.ModelViewSet):
         serializer.save()
     
     def create(self, request, *args, **kwargs):
-        # Chama o create padrão
         response = super().create(request, *args, **kwargs)
-        
-        # Busca a instância recém-criada para acessar os dados do cliente e moto
         instance = Agendamento.objects.get(pk=response.data['id'])
-        
-        # Mensagem formatada para o agendamento
         msg = (
             f"Olá *{instance.cliente.nome}*! 🏍️\n\n"
             f"Seu agendamento na oficina foi registrado:\n"
@@ -774,21 +714,14 @@ class AgendamentoViewSet(viewsets.ModelViewSet):
             f"🛵 Moto: {instance.moto.modelo} ({instance.moto.placa})\n\n"
             f"Estamos te aguardando!"
         )
-        
-        # Adiciona o link ao dicionário de resposta que o Front-end vai receber
         response.data['whatsapp_link'] = formatar_zap_link(instance.cliente.telefone, msg)
         return response
-    # Filtro rápido para ver agendamentos de hoje
     @action(detail=False, methods=['get'])
     def hoje(self, request):
         hoje = timezone.now().date()
         agendamentos = self.queryset.filter(data=hoje)
         serializer = self.get_serializer(agendamentos, many=True)
         return Response(serializer.data)
-
-
-
-
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -878,3 +811,137 @@ class FuncionarioViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.filter(is_active=True)
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated]
+
+import base64
+import json
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_nf_view(request):
+    import requests
+    imagem_base64 = request.data.get('imagem')
+    if not imagem_base64:
+        return Response({"error": "Imagem não enviada"}, status=400)
+    
+    if imagem_base64.startswith('data:image'):
+        imagem_base64 = imagem_base64.split(',')[1]
+
+    contexto = (
+        "Você é um extrator de dados de notas fiscais. "
+        "Analise a imagem da nota fiscal e extraia os itens listados. "
+        "Retorne APENAS um JSON estrito no formato: "
+        '[{"nome_peca": "string", "valor_unitario": float, "quantidade": int}]. '
+        "Não inclua markdown, crases ou qualquer outro texto. "
+        "Se não conseguir ler, retorne []"
+    )
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": contexto},
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": imagem_base64
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {"temperature": 0.1}
+        }
+        
+        response = requests.post(url, json=payload, timeout=20)
+        if response.status_code == 200:
+            data = response.json()
+            texto = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+            
+            if texto.startswith("```json"):
+                texto = texto[7:]
+            if texto.startswith("```"):
+                texto = texto[3:]
+            if texto.endswith("```"):
+                texto = texto[:-3]
+            texto = texto.strip()
+
+            dados_json = json.loads(texto)
+            
+            NotaFiscalPendente.objects.create(
+                usuario=request.user,
+                dados_extraidos=dados_json
+            )
+            return Response({"message": "Nota fiscal processada com sucesso. Acesse o computador para continuar."}, status=200)
+        else:
+            return Response({"error": "Erro ao processar imagem na IA", "details": response.text}, status=500)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def nf_pendentes_view(request):
+    pendente = NotaFiscalPendente.objects.filter(usuario=request.user).order_by('-criado_em').first()
+    if pendente:
+        return Response({
+            "id": pendente.id,
+            "itens": pendente.dados_extraidos,
+            "criado_em": pendente.criado_em
+        }, status=200)
+    return Response({"message": "Nenhuma nota pendente"}, status=404)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def confirmar_nf_view(request):
+    pendente_id = request.data.get('pendente_id')
+    itens_confirmados = request.data.get('itens')
+    servico_id = request.data.get('servico_id')
+    
+    if not pendente_id or not itens_confirmados:
+        return Response({"error": "Dados incompletos"}, status=400)
+        
+    try:
+        pendente = NotaFiscalPendente.objects.get(id=pendente_id, usuario=request.user)
+        
+        servico = None
+        if servico_id:
+            from .models import Servico, ItemServicoPeca
+            try:
+                servico_id_int = int(servico_id)
+                servico = Servico.objects.filter(id=servico_id_int).first()
+                print(f"DEBUG: servico encontrado: {servico}")
+            except Exception as e:
+                print(f"DEBUG: erro ao converter servico_id ou buscar: {e}")
+            
+        for item in itens_confirmados:
+            nome_peca = item.get('nome_peca', 'Peça Externa')
+            if '(-- EXTERNA)' not in nome_peca:
+                nome_peca = f"{nome_peca} (-- EXTERNA)"
+
+            peca = Peca.objects.create(
+                nome=nome_peca,
+                preco_custo=item.get('valor_unitario', 0),
+                preco_venda=item.get('preco_venda', 0),
+                quantidade_em_estoque=0,
+                origem_externa=True
+            )
+            
+            if servico:
+                try:
+                    ItemServicoPeca.objects.create(
+                        servico=servico,
+                        peca=peca,
+                        quantidade_utilizada=item.get('quantidade', 1),
+                        valor_unitario_na_epoca=item.get('preco_venda', 0)
+                    )
+                    print(f"DEBUG: ItemServicoPeca criado com sucesso")
+                except Exception as e:
+                    print(f"DEBUG: erro ao criar ItemServicoPeca: {e}")
+                
+        pendente.delete()
+        return Response({"message": "Peças cadastradas com sucesso"}, status=201)
+    except NotaFiscalPendente.DoesNotExist:
+        return Response({"error": "Nota pendente não encontrada"}, status=404)
+    except Exception as e:
+        print(f"DEBUG: erro geral: {e}")
+        return Response({"error": str(e)}, status=500)
+

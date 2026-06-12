@@ -10,25 +10,25 @@ interface ContactModalProps {
 }
 
 const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, onSuccess }) => {
-  // 1. Declarar os estados corretamente dentro do componente
+  
   const [userEmail, setUserEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  // 2. Função handleSubmit dentro do componente
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Chama a nova rota que criamos no Django
+      
       await api.post('solicitar-acesso/', {
         email: userEmail
       });
 
       console.log("Solicitação enviada para o admin:", userEmail);
-      onSuccess(); // Abre o modal do aviãozinho
+      onSuccess(); 
     } catch (error) {
       console.error("Erro ao solicitar acesso:", error);
       alert("Não foi possível enviar a solicitação. Verifique se o backend está rodando.");

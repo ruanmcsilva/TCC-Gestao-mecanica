@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
-// Importando os ícones
 import { History, FileText, Hash, Calendar, User, Clock, ArrowRight, LayoutDashboard, TrendingUp, Printer } from 'lucide-react';
-// Importando componentes de gráfico
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area
@@ -22,14 +20,12 @@ interface ReportData {
 }
 
 const ReportsPage: React.FC = () => {
-  // --- ESTADOS DE NAVEGAÇÃO E DADOS ---
   const [activeTab, setActiveTab] = useState<'relatorio' | 'dashboard' | 'historico'>('relatorio');
   const [history, setHistory] = useState<any[]>([]);
   const [report, setReport] = useState<ReportData | null>(null);
   const [dashData, setDashData] = useState<any>(null);
   const [loading, setLoading] = useState<boolean>(false);
 
-  // Filtros
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [periodo, setPeriodo] = useState<string>('mes');
@@ -40,7 +36,6 @@ const ReportsPage: React.FC = () => {
 
   const COLORS = ['#f97316', '#3b82f6', '#10b981', '#ef4444', '#8b5cf6'];
 
-  // --- BUSCA DADOS DO DASHBOARD (PANDAS) ---
   const fetchDashboard = async () => {
     setLoading(true);
     try {
@@ -336,7 +331,6 @@ const ReportsPage: React.FC = () => {
           )}
         </>
       ) : (
-        /* --- ABA DE HISTÓRICO ORIGINAL --- */
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden w-[100%] mx-auto">
 
           <div className="overflow-y-auto max-h-[650px] custom-scrollbar">

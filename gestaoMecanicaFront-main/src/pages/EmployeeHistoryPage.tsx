@@ -14,9 +14,7 @@ const EmployeeHistoryPage: React.FC = () => {
     const fetchHistory = async () => {
       try {
         const response = await api.get('/servicos/', { params: { page_size: 50 } });
-        // O endpoint pode ser paginado, retornando um objeto com 'results'
         const dataArray = response.data.results || response.data || [];
-        // Ordenar por data mais recente e pegar os 50 últimos para o histórico simples
         const sortedData = dataArray.sort((a: any, b: any) => {
           const dateA = a.data_fim || a.data_inicio;
           const dateB = b.data_fim || b.data_inicio;

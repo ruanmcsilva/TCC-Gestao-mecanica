@@ -23,8 +23,6 @@ import api from '../config/api';
 export default function HomeScreen({ navigation }: any) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    
-    // Estados para os contadores do Dashboard
     const [stats, setStats] = useState({
         emAndamento: 0,
         estoqueBaixo: 0,
@@ -33,33 +31,16 @@ export default function HomeScreen({ navigation }: any) {
 
 const fetchDashboardData = useCallback(async () => {
     try {
-        // Usamos o parâmetro 'pagination=false' ou um limite muito alto.
-        // A maioria das APIs Django configuradas com rest_framework aceita o limite.
-        const [servicosRes, pecasRes] = await Promise.all([
-            api.get('/servicos/?page_size=1000&exclude_balcao=true'), 
-            api.get('/pecas/?page_size=1000')
+        const [servicesRes, lowStockRes, allPartsRes] = await Promise.all([
+            api.get('/dashboard/services-in-progress/'),
+            api.get('/dashboard/low-stock-parts/'),
+            api.get('/pecas/?page_size=1'),
         ]);
 
-        // Verificamos se os dados vieram dentro de 'results' ou direto no array
-        const servicos = Array.isArray(servicosRes.data) ? servicosRes.data : servicosRes.data.results || [];
-        const pecas = Array.isArray(pecasRes.data) ? pecasRes.data : pecasRes.data.results || [];
-
-        // Filtro para "Em Andamento" ignorando maiúsculas/minúsculas
-        const emAndamento = servicos.filter((s: any) => {
-            const status = s.status ? s.status.toLowerCase() : '';
-            return status === 'em_andamento' || status === 'andamento';
-        }).length;
-
-        // Filtro de estoque baixo (menor ou igual a 5 unidades)
-        const estoqueBaixo = pecas.filter((p: any) => p.quantidade_em_estoque <= 5).length;
-        
-        // Total de itens agora deve mostrar os 12 (ou quantos tiverem no banco)
-        const totalItens = pecas.length; 
-
         setStats({
-            emAndamento,
-            estoqueBaixo,
-            totalItens
+            emAndamento: servicesRes.data.count || 0,
+            estoqueBaixo: lowStockRes.data.count || 0,
+            totalItens: allPartsRes.data.count || 0
         });
     } catch (error) {
         console.error("Erro ao carregar dashboard:", error);
@@ -102,10 +83,7 @@ const fetchDashboardData = useCallback(async () => {
                     <ActivityIndicator size="large" color="#F97316" style={{ marginTop: 20 }} />
                 ) : (
                     <>
-                        {/* CARDS DE STATUS */}
                         <View style={styles.statusCardsContainer}>
-                            
-                            {/* Em Andamento */}
                             <View style={[styles.statusCard, { borderLeftColor: '#F97316' }]}>
                                 <View style={styles.statusHeader}>
                                     <PlayCircle size={18} color="#F97316" />
@@ -113,8 +91,6 @@ const fetchDashboardData = useCallback(async () => {
                                 </View>
                                 <Text style={styles.statusValue}>{stats.emAndamento}</Text>
                             </View>
-
-                            {/* Estoque Baixo */}
                             <View style={[styles.statusCard, { borderLeftColor: '#EF4444' }]}>
                                 <View style={styles.statusHeader}>
                                     <AlertTriangle size={18} color={stats.estoqueBaixo > 0 ? '#EF4444' : '#D1D5DB'} />
@@ -124,8 +100,6 @@ const fetchDashboardData = useCallback(async () => {
                                     {stats.estoqueBaixo}
                                 </Text>
                             </View>
-
-                            {/* Total de Itens */}
                             <View style={[styles.statusCard, { borderLeftColor: '#2563EB' }]}>
                                 <View style={styles.statusHeader}>
                                     <Layers size={18} color="#2563EB" />
@@ -135,13 +109,10 @@ const fetchDashboardData = useCallback(async () => {
                             </View>
 
                         </View>
-
-                        {/* AÇÕES PRINCIPAIS */}
                        <View style={styles.actionsContainer}>
-                        {/* NOVA O.S. - Agora aponta direto para o Scanner primeiro */}
                         <TouchableOpacity
                             style={styles.actionCard} 
-                            onPress={() => navigation.navigate('ScannerPlaca')} // Único caminho: Scanner
+                            onPress={() => navigation.navigate('ScannerPlaca')} 
                         >
                             <View style={[styles.iconContainer, { backgroundColor: '#F97316' }]}>
                                 <Wrench size={28} color="white" />

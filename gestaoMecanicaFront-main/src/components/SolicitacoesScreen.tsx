@@ -28,7 +28,7 @@ export default function SolicitacoesScreen() {
     try {
       await api.post(`autorizar-acesso/${id}/`, { nivel_acesso: nivelAcesso });
       alert(`Acesso autorizado como ${nivelAcesso}! O link de cadastro foi enviado por e-mail.`);
-      carregarConvites(); // Atualiza a lista
+      carregarConvites(); 
     } catch (error) {
       alert("Erro ao autorizar usuário.");
     }

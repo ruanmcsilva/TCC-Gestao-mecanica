@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { Menu, Plus, Search, Package } from 'lucide-react-native';
+import { Menu, Plus, Search, Package, Camera } from 'lucide-react-native';
 import api from '../config/api';
 
 export default function PartScreen({ navigation }: any) {
@@ -13,7 +13,7 @@ export default function PartScreen({ navigation }: any) {
   const fetchParts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/pecas/');
+      const response = await api.get('/pecas/?page_size=1000');
       const dadosRecuperados = response.data.results || response.data;
       setParts(dadosRecuperados);
     } catch (error) {
@@ -36,7 +36,7 @@ export default function PartScreen({ navigation }: any) {
       )
     : [];
 
-  const semEstoque = Array.isArray(parts) ? parts.filter((p: any) => p.quantidade_em_estoque === 0).length : 0;
+  const semEstoque = Array.isArray(parts) ? parts.filter((p: any) => p.quantidade_em_estoque <= 5).length : 0;
 
   return (
     <SafeAreaView style={styles.background}>
@@ -71,12 +71,21 @@ export default function PartScreen({ navigation }: any) {
                 />
               </View>
 
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => navigation.navigate('PartDetails', {})}
-              >
-                <Plus color="white" size={24} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row' }}>
+                <TouchableOpacity 
+                  style={[styles.actionButton, { marginRight: 10, backgroundColor: '#10B981' }]}
+                  onPress={() => navigation.navigate('ScannerNf')}
+                >
+                  <Camera color="white" size={20} />
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.actionButton}
+                  onPress={() => navigation.navigate('PartDetails', {})}
+                >
+                  <Plus color="white" size={24} />
+                </TouchableOpacity>
+              </View>
             </View>
 
             <View style={styles.summaryCards}>
@@ -88,7 +97,7 @@ export default function PartScreen({ navigation }: any) {
                 <Text style={[styles.summaryValue, { color: '#DC2626' }]}>
                   {semEstoque}
                 </Text>
-                <Text style={styles.summaryLabel}>Sem Estoque</Text>
+                <Text style={styles.summaryLabel}>Estoque Baixo</Text>
               </View>
             </View>
           </>
@@ -108,7 +117,7 @@ export default function PartScreen({ navigation }: any) {
                 <Text style={styles.categoryText}>Grupo {item.grupo || 'N/A'}</Text>
               </View>
               <View style={styles.row}>
-                <Text style={[styles.stockText, item.quantidade_em_estoque === 0 && { color: '#DC2626' }]}>
+                <Text style={[styles.stockText, item.quantidade_em_estoque <= 5 && { color: '#DC2626' }]}>
                   Estoque: {item.quantidade_em_estoque} un.
                 </Text>
                 <Text style={styles.priceText}>

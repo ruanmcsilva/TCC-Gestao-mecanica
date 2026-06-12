@@ -60,10 +60,8 @@ function HomePage({ setIsAuthenticated }: HomePageProps) {
   return (
     <div className="p-6 max-w-5xl mx-auto font-sans h-full flex flex-col justify-center overflow-y-auto w-full">
       
-      {/* STATUS DO TOPO - Total de Peças em Destaque */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
         
-        {/* Serviços em Andamento */}
         <div className="bg-white px-6 py-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between border-l-4 border-l-orange-500">
           <div className="flex items-center gap-3">
             <PlayCircle size={22} className="text-orange-500 animate-pulse" />
@@ -81,7 +79,6 @@ function HomePage({ setIsAuthenticated }: HomePageProps) {
           <span className="text-2xl font-black text-red-600">{dashboardData?.low_stock_parts_count}</span>
         </div>
 
-        {/* TOTAL DE PEÇAS (Agora com destaque) */}
         <div className="bg-white px-6 py-5 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between border-l-4 border-l-blue-600">
           <div className="flex items-center gap-3">
             <Layers size={22} className="text-blue-600" />
@@ -91,12 +88,10 @@ function HomePage({ setIsAuthenticated }: HomePageProps) {
         </div>
       </div>
 
-      {/* AÇÕES PRINCIPAIS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         
-        {/* CARD: OFICINA (Vai direto para Nova OS) */}
         <div 
-          onClick={() => navigate('/servicos/novo')} // <--- Redireciona direto para o formulário
+          onClick={() => navigate('/servicos/novo')} 
           className="relative bg-white p-10 rounded-3xl shadow-md border border-gray-100 hover:shadow-xl hover:border-orange-200 transition-all cursor-pointer group"
         >
           <div className="relative z-10 flex flex-col h-full justify-between">
@@ -115,7 +110,6 @@ function HomePage({ setIsAuthenticated }: HomePageProps) {
           </div>
         </div>
 
-        {/* CARD: VENDA AVULSA */}
         <div 
           onClick={() => navigate('/venda-balcao')} 
           className="relative bg-white p-10 rounded-3xl shadow-md border border-gray-100 hover:shadow-xl hover:border-blue-200 transition-all cursor-pointer group"

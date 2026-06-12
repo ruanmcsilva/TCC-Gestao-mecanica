@@ -1,4 +1,3 @@
-// src/pages/ClientHistoryPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/api';
@@ -9,7 +8,6 @@ const ClientHistoryPage: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   
-  // 1. Iniciamos como array vazio [] para evitar o erro de 'undefined'
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -17,7 +15,6 @@ const ClientHistoryPage: React.FC = () => {
     const fetchHistory = async () => {
       try {
         const response = await api.get(`/clientes/${id}/historico/`);
-        // 2. Garantimos que se a API não trouxer resultados, salvaremos um array vazio
         setHistory(response.data || []);
       } catch (err) {
         showNotification('Erro ao carregar histórico.', 'error');
@@ -45,7 +42,6 @@ const ClientHistoryPage: React.FC = () => {
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden flex-grow flex flex-col">
-        {/* 3. PROTEÇÃO: Verificamos se history existe e se tem tamanho */}
         {!history || history.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             Nenhum serviço encontrado para este cliente.
@@ -79,7 +75,7 @@ const ClientHistoryPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="p-4 text-right font-semibold">
-                    R$ {parseFloat(item.valor_total).toFixed(2)}
+                    R$ {parseFloat(item.valor_total_servico).toFixed(2)}
                   </td>
                 </tr>
               ))}

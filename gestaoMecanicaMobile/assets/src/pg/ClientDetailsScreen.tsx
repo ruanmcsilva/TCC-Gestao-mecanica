@@ -7,7 +7,6 @@ import api from '../config/api'; // Sua config com o IP 192.168.0.123
 export default function ClientDetailsScreen({ route, navigation }: any) {
   const { client } = route.params || {};
   
-  // Estados usando os nomes do seu banco no Django
   const [loading, setLoading] = useState(false);
   const [nome, setNome] = useState(client?.nome || client?.name || '');
   const [telefone, setTelefone] = useState(client?.telefone || client?.phone || '');
@@ -34,16 +33,14 @@ export default function ClientDetailsScreen({ route, navigation }: any) {
       };
 
       if (client?.id) {
-        // Se tem ID, estamos EDITANDO (PUT)
         await api.put(`/clientes/${client.id}/`, payload);
         Alert.alert("Sucesso", "Cliente atualizado com sucesso!");
       } else {
-        // Se não tem ID, estamos CRIANDO (POST)
         await api.post('/clientes/', payload);
         Alert.alert("Sucesso", "Cliente cadastrado com sucesso!");
       }
 
-      navigation.goBack(); // Volta para a lista para ver o resultado
+      navigation.goBack();
     } catch (error: any) {
       console.error("Erro ao salvar cliente:", error.response?.data || error.message);
       Alert.alert("Erro", "Não foi possível salvar os dados no servidor.");

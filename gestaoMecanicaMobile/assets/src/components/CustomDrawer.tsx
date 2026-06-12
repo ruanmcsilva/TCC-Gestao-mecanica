@@ -4,12 +4,14 @@ import { DrawerContentScrollView, DrawerItemList } from '@react-navigation/drawe
 import { LogOut, User, Settings, FileText, Calendar, LayoutDashboard } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function CustomDrawer(props: any) {
   const navigation = useNavigation<any>();
+  const { isAdmin, user, logout } = useAuth();
 
-  const handleLogout = () => {
-    // Para efeito visual, navegamos de volta ao Login
+  const handleLogout = async () => {
+    await logout();
     navigation.reset({
       index: 0,
       routes: [{ name: 'Login' }],
@@ -20,14 +22,13 @@ export default function CustomDrawer(props: any) {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }} edges={['top', 'bottom']}>
       <DrawerContentScrollView {...props} contentContainerStyle={{ paddingTop: 2, marginLeft: -12}}>
         
-        {/* Header do Drawer */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.userName}>Ruan</Text>
+            <Text style={styles.userName}>{user ? user.first_name || user.username : 'Carregando...'}</Text>
+            <Text style={styles.userRole}>{isAdmin ? 'Administrador' : 'Funcionário'}</Text>
           </View>
         </View>
 
-        {/* Itens de navegação padrão do Drawer (se houver, definidos no App.tsx) */}
         <View style={styles.drawerList}>
             <DrawerItemList {...props} />
             
@@ -36,10 +37,12 @@ export default function CustomDrawer(props: any) {
               <Text style={styles.drawerItemText}>Perfil</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.drawerItem} onPress={() => navigation.navigate('Dashboard')}>
-              <LayoutDashboard color="#EE6B22" size={22} />
-              <Text style={styles.drawerItemText}>Painel de Controle</Text>
-            </TouchableOpacity>
+            {isAdmin && (
+              <TouchableOpacity style={styles.drawerItem} onPress={() => navigation.navigate('Dashboard')}>
+                <LayoutDashboard color="#EE6B22" size={22} />
+                <Text style={styles.drawerItemText}>Painel de Controle</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity style={styles.drawerItem} onPress={() => navigation.navigate('Schedules')}>
               <Calendar color="#EE6B22" size={22} />
@@ -55,7 +58,6 @@ export default function CustomDrawer(props: any) {
 
       </DrawerContentScrollView>
 
-      {/* Footer com botão de Sair */}
       <View style={styles.footer}>
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <LogOut color="#E33E33" size={22} />

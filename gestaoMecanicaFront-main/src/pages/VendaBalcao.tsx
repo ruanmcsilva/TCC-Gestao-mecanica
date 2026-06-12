@@ -132,7 +132,6 @@ const VendaBalcao: React.FC = () => {
     setShowPagamento(true);
   };
 
-  // FUNÇÃO ÚNICA E CORRIGIDA PARA O BACKEND
   const confirmarVendaFinal = async () => {
     setLoading(true);
     try {
@@ -179,7 +178,6 @@ const VendaBalcao: React.FC = () => {
     <div className="bg-gray-50 min-h-screen font-sans p-4 md:p-8 flex items-center justify-center">
       <div className="w-full max-w-6xl bg-[#141414] rounded-[3rem] shadow-2xl overflow-hidden border border-white/5">
 
-        {/* HEADER */}
         <div className="p-8 flex justify-between items-center border-b border-white/5 bg-[#1a1a1a]">
           <div className="flex items-center gap-4">
             <div className="bg-orange-500 p-2 rounded-xl text-white">
@@ -197,7 +195,6 @@ const VendaBalcao: React.FC = () => {
           </button>
         </div>
 
-        {/* BUSCA */}
         <div className="p-6 bg-[#1a1a1a]/50 border-b border-white/5">
           <label className="text-[10px] font-black text-white uppercase tracking-widest ml-1 mb-2 block">Localizar item no estoque</label>
           <Select
@@ -210,7 +207,6 @@ const VendaBalcao: React.FC = () => {
           />
         </div>
 
-        {/* TABELA */}
         <div className="p-8 min-h-[300px]">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -254,7 +250,6 @@ const VendaBalcao: React.FC = () => {
           </div>
         </div>
 
-        {/* RODAPÉ */}
         <div className="p-8 bg-[#1a1a1a] border-t border-white/5">
           <div className="flex flex-col md:flex-row justify-between items-end gap-8">
             <div className="flex gap-4 items-end">
@@ -336,7 +331,6 @@ const VendaBalcao: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL DE PAGAMENTO */}
       {showPagamento && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-[#1a1a1a] w-full max-w-lg rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">

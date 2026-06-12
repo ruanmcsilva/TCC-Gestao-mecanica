@@ -1,9 +1,10 @@
 // src/components/Layout.tsx
 import React, { ReactNode, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertCircle, Calendar } from 'lucide-react'; // Adicionado Calendar
+import { AlertCircle, Calendar } from 'lucide-react';
 import Sidebar from './Sidebar';
 import AIChatWidget from './AIChatWidget';
+import { NfPendenteModal } from './NfPendenteModal';
 import api from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -14,7 +15,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, setIsAuthenticated }) => {
   const [pendentes, setPendentes] = useState(0);
-  const [agendamentosHoje, setAgendamentosHoje] = useState(0); // Estado para agendamentos do dia
+  const [agendamentosHoje, setAgendamentosHoje] = useState(0); 
   const [funcionarioNome, setFuncionarioNome] = useState("Carregando...");
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
@@ -22,12 +23,9 @@ const Layout: React.FC<LayoutProps> = ({ children, setIsAuthenticated }) => {
   const fetchData = async () => {
     try {
       if (isAdmin) {
-        // Busca contagem de convites pendentes apenas se for admin
         const resConvites = await api.get('convites/pendentes/contagem/');
         setPendentes(resConvites.data.pendentes);
       }
-
-      // Busca agendamentos de hoje usando a action que criamos no Django
       const resAgendamentos = await api.get('agendamento/hoje/');
       setAgendamentosHoje(resAgendamentos.data.length);
     } catch (error) {
@@ -63,7 +61,6 @@ const Layout: React.FC<LayoutProps> = ({ children, setIsAuthenticated }) => {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* ÍCONE DE AGENDAMENTOS DO DIA */}
             <button
               onClick={() => navigate('/agendamentos')}
               className="relative p-2 rounded-full hover:bg-gray-100 transition-all group"
@@ -83,7 +80,6 @@ const Layout: React.FC<LayoutProps> = ({ children, setIsAuthenticated }) => {
               )}
             </button>
 
-            {/* ÍCONE DE SOLICITAÇÕES DE ACESSO */}
             {isAdmin && (
               <button
                 onClick={() => navigate('/solicitacoes')}
@@ -111,8 +107,9 @@ const Layout: React.FC<LayoutProps> = ({ children, setIsAuthenticated }) => {
         <main className="flex-grow p-4 md:p-6 md:pb-2 overflow-hidden flex flex-col">
           {children}
         </main>
-
-
+        
+        <NfPendenteModal />
+        
       </div>
     </div>
   );

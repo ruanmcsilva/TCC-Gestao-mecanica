@@ -3,7 +3,7 @@ import api from '../api/api';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import { Save, X, User, Bike, Wrench, Package, Camera, Trash2 } from 'lucide-react';
-import Select from 'react-select'; // Importação da biblioteca de busca
+import Select from 'react-select'; 
 
 const NewServiceIntegrated: React.FC = () => {
   const navigate = useNavigate();
@@ -11,7 +11,6 @@ const NewServiceIntegrated: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [allParts, setAllParts] = useState<any[]>([]);
 
-  // ESTADO GERAL (CLIENTE + MOTO + SERVIÇO + PROFISSIONAL)
   const [formData, setFormData] = useState({
     nome: '', 
     cpf_cnpj: '', 
@@ -31,14 +30,13 @@ const NewServiceIntegrated: React.FC = () => {
   const [selectedParts, setSelectedParts] = useState<{ peca: number; quantidade: number; preco: number; nome: string }[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
-  // Estilização do Select para combinar com seu layout
   const customSelectStyles = {
     control: (provided: any) => ({
       ...provided,
       padding: '8px',
       borderRadius: '1rem',
       border: 'none',
-      backgroundColor: '#f9fafb', // bg-gray-50
+      backgroundColor: '#f9fafb', 
       boxShadow: 'none',
       fontWeight: '700',
       cursor: 'pointer'
@@ -55,7 +53,6 @@ const NewServiceIntegrated: React.FC = () => {
     api.get('/pecas/?page_size=1000').then(res => setAllParts(res.data.results));
   }, []);
 
-  // Transformar peças para o formato do Select
   const pecasOptions = allParts.map(p => ({
     value: p.id,
     label: `${p.nome} - R$ ${p.preco_venda} (Est: ${p.quantidade_em_estoque || 0})`,
@@ -162,7 +159,11 @@ const NewServiceIntegrated: React.FC = () => {
           const photoData = new FormData();
           photoData.append('servico', String(serviceId));
           photoData.append('foto', file);
-          await api.post('/fotos/', photoData);
+          await api.post('/fotos/', photoData, {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          });
         }
       }
 
@@ -232,7 +233,6 @@ const NewServiceIntegrated: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* 4. PEÇAS COM REACT-SELECT */}
             <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
               <h2 className="text-xs font-black text-purple-600 uppercase tracking-widest mb-4 flex items-center gap-2"><Package size={18}/> 4. Peças</h2>
               
@@ -243,7 +243,7 @@ const NewServiceIntegrated: React.FC = () => {
                 isSearchable
                 noOptionsMessage={() => "Peça não encontrada"}
                 onChange={handleAddPart}
-                value={null} // Mantém o select limpo após escolher para poder pesquisar outra
+                value={null} 
               />
 
               <div className="mt-6 max-h-48 overflow-y-auto space-y-2 pr-2">

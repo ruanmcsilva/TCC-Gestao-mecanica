@@ -39,8 +39,8 @@ export default function ServiceDetailsScreen({ route, navigation }: any) {
       ]);
       
       setService(serviceRes.data);
-      setParts(partsRes.data.results || []);
-      setPhotos(photosRes.data.results || []);
+      setParts(partsRes.data.results || partsRes.data || []);
+      setPhotos(photosRes.data.results || photosRes.data || []);
       
       setDescription(serviceRes.data.descricao);
       setLaborCost(serviceRes.data.valor_mao_de_obra.toString());

@@ -1,6 +1,5 @@
 import "react-native-gesture-handler";
 import React, { useState } from "react"; 
-// ADICIONADO StyleSheet AQUI NO IMPORT
 import { View, TouchableOpacity, Modal, Text, StyleSheet } from "react-native";
 import { NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -16,7 +15,6 @@ import {
 } from '@expo/vector-icons';
 import { Home, Users, Bike, HandPlatter, Cog } from 'lucide-react-native';
 
-// Telas
 import LoginScreen from "./assets/src/pg/LoginScreen";
 import HomeScreen from "./assets/src/pg/HomeScreen";
 import ClientScreen from "./assets/src/pg/ClientScreen";
@@ -38,12 +36,13 @@ import CustomDrawer from "./assets/src/components/CustomDrawer";
 import CadastroTokenScreen from "./assets/src/pg/CadastroTokenScreen";
 import AIChatScreen from "./assets/src/components/AIChatScreen";
 import ScannerPlaca from "./assets/src/components/ScannerPlaca";
+import ScannerNfScreen from "./assets/src/pg/ScannerNfScreen";
+import { AuthProvider, useAuth } from "./assets/src/contexts/AuthContext";
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const Drawer = createDrawerNavigator();
 
-// 1. BARRA DE NAVEGAÇÃO INFERIOR
 function TabNavigator() {
   return (
     <Tab.Navigator
@@ -60,7 +59,7 @@ function TabNavigator() {
             height: 55,
             elevation: 10,
             borderTopWidth: 0,
-            marginLeft:20, /*Esta fixo*/
+            marginLeft:20, 
             paddingBottom: 0,
             paddingTop: 7,
             paddingHorizontal: 15,
@@ -76,8 +75,9 @@ function TabNavigator() {
   );
 }
 
-// 2. MENU LATERAL
 function DrawerNavigator() {
+  const { isAdmin, isLoading } = useAuth();
+
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawer {...props} />}
@@ -88,7 +88,9 @@ function DrawerNavigator() {
       }}
     >
       <Drawer.Screen name="DashboardRoot" component={TabNavigator} options={{ title: 'Início', drawerIcon: ({ color }) => <MaterialCommunityIcons name="home" color={color} size={22} /> }} />
-      <Drawer.Screen name="Reports" component={ReportScreen} options={{ title: 'Relatórios', drawerIcon: ({ color }) => <MaterialCommunityIcons name="chart-bar" color={color} size={22} /> }} />
+      {isAdmin && (
+        <Drawer.Screen name="Reports" component={ReportScreen} options={{ title: 'Relatórios', drawerIcon: ({ color }) => <MaterialCommunityIcons name="chart-bar" color={color} size={22} /> }} />
+      )}
     </Drawer.Navigator>
   );
 }
@@ -103,6 +105,7 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
+      <AuthProvider>
       <NavigationContainer 
         ref={navigationRef}
         onStateChange={() => {
@@ -125,7 +128,6 @@ export default function App() {
 
           <Stack.Screen name="AppHome" component={DrawerNavigator} options={{ headerShown: false }} />
           
-          {/* ADICIONADO AQUI: Tela de Scanner de Placa */}
           <Stack.Screen 
             name="ScannerPlaca" 
             component={ScannerPlaca} 
@@ -136,6 +138,7 @@ export default function App() {
               headerStyle: { backgroundColor: '#1a1a1a' } 
             }} 
           />
+          <Stack.Screen name="ScannerNf" component={ScannerNfScreen} options={{ headerShown: false }} />
 
           <Stack.Screen name="ClientDetails" component={ClientDetailsScreen} options={{ headerShown: false }} />
           <Stack.Screen name="ClientHistory" component={ClientHistoryScreen} options={{ headerShown: false }} />
@@ -176,6 +179,7 @@ export default function App() {
           </>
         )}
       </NavigationContainer>
+      </AuthProvider>
     </SafeAreaProvider>
   );
 }

@@ -30,15 +30,12 @@ const ClientPage: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 
-  // --- FUNÇÃO DE MÁSCARA PARA SEGURANÇA ---
   const maskCPF = (value: string) => {
     if (!value) return '---';
     const cleanValue = value.replace(/\D/g, '');
     if (cleanValue.length === 11) {
-      // Mascara CPF: 123.***.***-00
       return `${cleanValue.substring(0, 3)}.***.***-${cleanValue.substring(9)}`;
     } else if (cleanValue.length === 14) {
-      // Mascara CNPJ: 12.***.*** / ****-00
       return `${cleanValue.substring(0, 2)}.***.***/****-${cleanValue.substring(12)}`;
     }
     return value;
@@ -121,7 +118,6 @@ const ClientPage: React.FC = () => {
 const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      // Capturamos a resposta do servidor para pegar o link do WhatsApp
       const response = await api.post('/clientes/', newClient);
       
       setNewClient({ nome: '', telefone: '', email: '', cpf_cnpj: '', endereco: '' });
@@ -129,7 +125,6 @@ const handleAddClient = async (e: React.FormEvent) => {
       setCurrentPage(1); 
       showNotification('Cliente adicionado!', 'success');
 
-      // VERIFICAÇÃO DO LINK DO WHATSAPP (Backend configurado)
       if (response.data.whatsapp_link) {
         window.open(response.data.whatsapp_link, '_blank');
       }
@@ -198,7 +193,6 @@ const handleAddClient = async (e: React.FormEvent) => {
             <input type="text" name="telefone" placeholder="Telefone" value={(editingClient ? editingClient.telefone : newClient.telefone) || ''} onChange={handleInputChange} className="p-2 border rounded outline-none" required />
             <input type="email" name="email" placeholder="Email" value={(editingClient ? editingClient.email : newClient.email) || ''} onChange={handleInputChange} className="p-2 border rounded outline-none" />
             
-            {/* CPF COM MÁSCARA AO EDITAR - Mas aceita digitação nova */}
             <input 
               type="text" 
               name="cpf_cnpj" 
@@ -220,7 +214,7 @@ const handleAddClient = async (e: React.FormEvent) => {
         </div>
       )}
 
-      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col">
+      <div className="bg-white shadow-sm rounded-lg p-6 border border-gray-100 flex-grow flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold text-orange-500 uppercase tracking-wide">Lista de Clientes</h2>
         </div>
@@ -234,7 +228,7 @@ const handleAddClient = async (e: React.FormEvent) => {
         <div className="h-[1px] bg-black w-full mb-2"></div>
 
         {loading ? <p className="text-center py-10 text-gray-500 font-bold uppercase text-xs">Buscando dados...</p> : (
-          <div className="divide-y divide-gray-50 flex-grow pr-2">
+          <div className="divide-y divide-gray-50 flex-grow overflow-y-auto pr-2">
             {clients.length > 0 ? clients.map(client => (
               <div 
                 key={client.id} 
@@ -243,7 +237,6 @@ const handleAddClient = async (e: React.FormEvent) => {
                 <div className="text-gray-900 font-bold text-left uppercase text-[11px]">{client.nome}</div>
                 <div className="text-sm text-gray-600 font-bold">{client.telefone || client.email}</div>
                 
-                {/* AQUI ESTÁ A MÁSCARA NA LISTAGEM */}
                 <div className="text-sm text-gray-400 font-mono italic">
                   {maskCPF(client.cpf_cnpj)}
                 </div>

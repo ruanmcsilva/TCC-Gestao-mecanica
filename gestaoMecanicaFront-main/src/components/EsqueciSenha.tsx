@@ -15,20 +15,18 @@ const EsqueciSenha: React.FC<EsqueciSenhaProps> = ({ isOpen, onClose, onSuccess 
 
   if (!isOpen) return null;
 
-  // REMOVI a função duplicada e deixei apenas a que conecta com o Back
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // O Django espera o campo "email"
-      // Se sua baseURL no api.ts já termina em /api/v1, aqui fica só 'password_reset/'
+
       await api.post('password_reset/', {
         email: userEmail
       });
 
       console.log("Token solicitado para:", userEmail);
-      onSuccess(); // Fecha este modal e abre o NovaSenha.tsx
+      onSuccess(); 
     } catch (error: any) {
       console.error("Erro ao solicitar reset:", error);
       alert("E-mail não encontrado ou erro no servidor.");

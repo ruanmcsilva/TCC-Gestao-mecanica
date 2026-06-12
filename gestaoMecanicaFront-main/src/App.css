@@ -6,13 +6,6 @@ html, body, #root {
   background-color: #f3f4f6;
 }
 
-/*.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
- */ 
 .logo:hover {
   filter: drop-shadow(0 0 2em #646cffaa);
 }
@@ -47,7 +40,7 @@ html, body, #root {
   background: transparent;
 }
 
-/* Mata as setinhas de vez em todos os navegadores */
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
   -webkit-appearance: none !important;
@@ -55,6 +48,6 @@ input::-webkit-inner-spin-button {
 }
 
 input[type=number] {
-  -moz-appearance: textfield !important; /* Firefox */
-  appearance: textfield !important;      /* Geral */
+  -moz-appearance: textfield !important; 
+  appearance: textfield !important;      
 }

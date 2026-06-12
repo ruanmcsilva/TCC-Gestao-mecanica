@@ -13,11 +13,11 @@ const AIChatWidget: React.FC = () => {
   const [loading, setLoading] = useState(false);
   
   const widgetRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null); // Ref para o scroll
+  const messagesEndRef = useRef<HTMLDivElement>(null); 
   const dragStartPos = useRef({ x: 0, y: 0 });
   const dragStartMousePos = useRef({ x: 0, y: 0 });
 
-  // Auto-scroll para a última mensagem
+ 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
@@ -73,7 +73,7 @@ const AIChatWidget: React.FC = () => {
     setLoading(true);
 
     try {
-      // Endpoint que configuramos no urls.py do Django
+      
       const res = await api.post('/ai/consultar/', { pergunta: userMsg });
       setMessages(prev => [...prev, { role: 'ai', text: res.data.resposta || 'Não consegui processar essa informação agora.' }]);
     } catch (error: any) {
@@ -109,7 +109,7 @@ const AIChatWidget: React.FC = () => {
                right: !isLeftHalf ? '0px' : 'auto',
              }}
         >
-          {/* Header estilizado para combinar com o tema Space Motos */}
+          
           <div className="bg-[#1a1a1a] text-white p-4 flex justify-between items-center shadow-md">
             <div className="flex items-center gap-3">
               <div className="bg-orange-500 p-2 rounded-full">
@@ -167,7 +167,7 @@ const AIChatWidget: React.FC = () => {
         </div>
       )}
 
-      {/* Ícone de ativação (O botão redondo) */}
+     
       <div 
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -177,7 +177,7 @@ const AIChatWidget: React.FC = () => {
         } border-4 border-white`}
       >
         <Bot size={32} />
-        {/* Badge indicador de IA */}
+        
         <div className="absolute -top-1 -right-1 bg-orange-500 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center">
           <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
         </div>

@@ -9,16 +9,11 @@ export default function ClientScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
 
-  // Função para buscar clientes no seu Docker (Back-end)
   const fetchClientes = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/clientes/');
-
-      // Se o Django retornar paginação, os dados estão em .results
-      // Se não, estão direto no .data
+      const response = await api.get('/clientes/?page_size=1000');
       const dadosRecuperados = response.data.results || response.data;
-
       setClientes(dadosRecuperados);
     } catch (error) {
       console.error("Erro ao carregar clientes:", error);
@@ -31,7 +26,6 @@ export default function ClientScreen({ navigation }: any) {
     fetchClientes();
   }, []);
 
-  // Filtro básico para a barra de busca
   const filteredClients = Array.isArray(clientes)
     ? clientes.filter((client: any) =>
       (client.nome || client.name || '').toLowerCase().includes(searchText.toLowerCase())
@@ -40,7 +34,6 @@ export default function ClientScreen({ navigation }: any) {
 
   return (
     <SafeAreaView style={styles.background}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.openDrawer()}>
           <Menu color="black" size={32} strokeWidth={1.5} />
@@ -49,7 +42,6 @@ export default function ClientScreen({ navigation }: any) {
         <View style={{ width: 32 }} />
       </View>
 
-      {/* Top Actions */}
       <View style={styles.topActionsContainer}>
         <View style={styles.searchContainer}>
           <Search color="#9CA3AF" size={20} />
@@ -70,7 +62,6 @@ export default function ClientScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
-      {/* List / Loading State */}
       {loading ? (
         <View style={{ flex: 1, justifyContent: 'center' }}>
           <ActivityIndicator size="large" color="#EE6B22" />
@@ -89,7 +80,6 @@ export default function ClientScreen({ navigation }: any) {
                 <UserCircle size={40} color="#EE6B22" />
               </View>
               <View style={styles.cardInfo}>
-                {/* Ajustado para bater com os campos do seu Serializer Django */}
                 <Text style={styles.cardName}>{item.nome || item.name}</Text>
                 <View style={styles.cardSubInfo}>
                   <Phone size={14} color="#6B7280" />

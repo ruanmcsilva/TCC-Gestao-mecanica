@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from decimal import Decimal
 import uuid
+from django.core.validators import FileExtensionValidator
 
 class Fornecedor(models.Model):
     nome = models.CharField(max_length=255)
@@ -29,6 +30,7 @@ class Peca(models.Model):
     grupo = models.ForeignKey(GrupoPeca, on_delete=models.SET_NULL, null=True, blank=True)
     fornecedor = models.ForeignKey(Fornecedor, on_delete=models.SET_NULL, null=True, blank=True)
     quantidade_em_estoque = models.PositiveIntegerField(default=0)
+    origem_externa = models.BooleanField(default=False)
 
     def __str__(self):
         return self.nome
@@ -41,6 +43,14 @@ class Convite(models.Model):
 
     def __str__(self):
         return f"{self.email} - {'Autorizado' if self.autorizado else 'Pendente'}"
+
+class NotaFiscalPendente(models.Model):
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    dados_extraidos = models.JSONField()
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"NF Pendente - {self.usuario.username} - {self.criado_em}"
 
 class Cliente(models.Model):
     nome = models.CharField(max_length=255)
@@ -131,10 +141,12 @@ class MovimentacaoEstoque(models.Model):
     def __str__(self):
         return f"{self.tipo_movimentacao} de {self.quantidade} {self.peca.nome if self.peca else 'Peca Deletada'} em {self.data_movimentacao.strftime('%Y-%m-%d %H:%M')}"
 
-# NOVO MODELO PARA FOTOS
 class FotoServico(models.Model):
     servico = models.ForeignKey(Servico, related_name='fotos', on_delete=models.CASCADE)
-    foto = models.ImageField(upload_to='fotos_servicos/') # Certifique-se de ter Pillow instalado (pip install Pillow)
+    foto = models.ImageField(
+        upload_to='fotos_servicos/',
+        validators=[FileExtensionValidator(allowed_extensions=['jpg', 'jpeg', 'png', 'webp'])]
+    ) 
     descricao = models.CharField(max_length=255, blank=True, null=True)
     data_upload = models.DateTimeField(auto_now_add=True)
 
@@ -142,7 +154,7 @@ class FotoServico(models.Model):
         return f"Foto de Serviço #{self.servico.id}"
     
 
-#AGENDAMENTO
+
 class Agendamento(models.Model):
     STATUS_CHOICES = [
         ('PENDENTE', 'Pendente'),
@@ -160,7 +172,6 @@ class Agendamento(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Garante que não existam dois agendamentos no mesmíssimo horário
         unique_together = ['data', 'hora']
         ordering = ['data', 'hora']
 

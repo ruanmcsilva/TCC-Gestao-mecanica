@@ -12,13 +12,12 @@ const SuccessModal: React.FC<SuccessModalProps> = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Camada de Ofuscamento */}
+      
       <div 
         className="absolute inset-0 bg-black/40 backdrop-blur-md transition-opacity" 
         onClick={onClose}
       ></div>
 
-      {/* Caixa do Modal: Aumentada em altura (min-h-[450px]) e largura (max-w-lg) */}
       <div className="relative bg-white p-10 rounded-[20px] shadow-2xl max-w-lg w-full min-h-[370px] transform transition-all flex flex-col items-center justify-between">
         
         {/* Cabeçalho */}

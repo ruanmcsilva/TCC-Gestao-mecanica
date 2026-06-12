@@ -12,7 +12,7 @@ export default function ServiceScreen({ navigation }: any) {
   const fetchServices = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/servicos/?exclude_balcao=true');
+      const response = await api.get('/servicos/?exclude_balcao=true&page_size=1000');
       const dadosRecuperados = response.data.results || response.data;
       setServices(dadosRecuperados);
     } catch (error) {

@@ -3,12 +3,12 @@ version: '3.8'
 services:
   db:
     image: postgres:15
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_DB=gestao_mecanica
-      - POSTGRES_USER=admin
-      - POSTGRES_PASSWORD=admin
+    env_file:
+      - .env
 
   backend:
     build: ./gestaoMecanicaBack-main
@@ -18,9 +18,8 @@ services:
       - ./media:/app/media
     ports:
       - "8000:8000"
-    environment:
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+    env_file:
+      - .env
     depends_on:
       - db
 

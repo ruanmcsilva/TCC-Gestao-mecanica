@@ -11,14 +11,10 @@ export default function VehicleScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
 
-  // Função para buscar as motos no Docker
   const fetchMotos = async () => {
     try {
       setLoading(true);
-      // Rota baseada no seu router.register(r'motos', MotoViewSet)
-      const response = await api.get('/motos/');
-      
-      // Garante que pega a lista mesmo se houver paginação no Django
+      const response = await api.get('/motos/?page_size=1000');
       const dadosRecuperados = response.data.results || response.data;
       setMotos(Array.isArray(dadosRecuperados) ? dadosRecuperados : []);
     } catch (error) {
@@ -32,7 +28,6 @@ export default function VehicleScreen({ navigation }: any) {
     fetchMotos();
   }, []);
 
-  // Filtro para buscar por modelo ou placa
   const filteredMotos = motos.filter((moto: any) => {
     const termo = searchText.toLowerCase();
     return (

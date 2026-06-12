@@ -9,7 +9,8 @@ from .views import (
     low_stock_parts_count, client_history, consulta_api_externa,
     contar_convites_pendentes, SolicitacaoAcessoView,
     AutorizarAcessoView, listar_convites, DashboardAnaliticoView, AgendamentoViewSet,
-    RegistrarComTokenView, consultar_ai, FuncionarioViewSet
+    RegistrarComTokenView, consultar_ai, FuncionarioViewSet,
+    upload_nf_view, nf_pendentes_view, confirmar_nf_view
 )
 
 router = DefaultRouter()
@@ -45,5 +46,8 @@ urlpatterns = [
     path('dashboard-analitico/', DashboardAnaliticoView.as_view(), name='dashboard-analitico'),
   
     path('ai/consultar/', consultar_ai, name='consultar_ai'),
+    path('pecas/upload-nf/', upload_nf_view, name='upload_nf'),
+    path('pecas/nf-pendentes/', nf_pendentes_view, name='nf_pendentes'),
+    path('pecas/confirmar-nf/', confirmar_nf_view, name='confirmar_nf'),
     path('', include(router.urls)),
 ]

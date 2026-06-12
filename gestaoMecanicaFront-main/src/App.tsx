@@ -19,8 +19,6 @@ import VendaBalcao from './pages/VendaBalcao';
 import AgendamentosPage from './pages/AgendamentosPage';
 import CadastroTokenScreen from './pages/CadastroTokenScreen';
 import EmployeeHistoryPage from './pages/EmployeeHistoryPage';
-
-// IMPORTAÇÃO DO CHAT DE IA
 import AIChatWidget from './components/AIChatWidget'; 
 
 import Layout from './components/Layout';
@@ -37,7 +35,7 @@ function App() {
   );
 
   useEffect(() => {
-    // Logica para validar o token ao iniciar
+    
   }, []);
 
   const ProtectedRoutes = () => {
@@ -68,7 +66,7 @@ function App() {
           <Route path="/venda-balcao" element={<VendaBalcao />} />
           <Route path="/agendamentos" element={<AgendamentosPage />} />
           
-          {/* Rota para páginas restritas para não-admins */}
+          
           {!isAdmin && <Route path="/relatorios" element={<Navigate to="/" replace />} />}
           {!isAdmin && <Route path="/solicitacoes" element={<Navigate to="/" replace />} />}
           {!isAdmin && <Route path="/historico" element={<EmployeeHistoryPage />} />}

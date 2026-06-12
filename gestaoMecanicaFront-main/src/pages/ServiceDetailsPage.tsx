@@ -28,7 +28,6 @@ const ServiceDetailsPage: React.FC = () => {
   const [allMotos, setAllMotos] = useState<any[]>([]);
   const [allFuncionarios, setAllFuncionarios] = useState<any[]>([]);
   
-  // Estados para Pagamento
   const [showPagamento, setShowPagamento] = useState(false);
   const [metodoPagamento, setMetodoPagamento] = useState('PIX');
   const [parcelas, setParcelas] = useState(1);
@@ -89,14 +88,13 @@ const ServiceDetailsPage: React.FC = () => {
       const serviceData = serviceResponse.data;
       setService(serviceData);
       setEditedService(serviceData);
-      setServiceParts(partsResponse.data.results || []);
-      setAllParts(allPartsResponse.data.results || []);
-      setUploadedPhotos(photosResponse.data.results || []);
-      setAllClients(allClientsRes.data.results || []);
-      setAllMotos(allMotosRes.data.results || []);
+      setServiceParts(partsResponse.data.results || partsResponse.data || []);
+      setAllParts(allPartsResponse.data.results || allPartsResponse.data || []);
+      setUploadedPhotos(photosResponse.data.results || photosResponse.data || []);
+      setAllClients(allClientsRes.data.results || allClientsRes.data || []);
+      setAllMotos(allMotosRes.data.results || allMotosRes.data || []);
       setAllFuncionarios(allFuncRes.data.results || allFuncRes.data || []);
 
-      // AJUSTE: Só busca a moto se o ID existir para evitar erro 404/null
       const [clientResponse, motoResponse] = await Promise.all([
         api.get(`/clientes/${serviceData.cliente}/`),
         serviceData.moto 
@@ -226,7 +224,6 @@ const ServiceDetailsPage: React.FC = () => {
            window.open(urlDanfe, '_blank');
         }
 
-        // AJUSTE: Abre o WhatsApp com os detalhes da finalização
         if (whatsappLink) {
           window.open(whatsappLink, '_blank');
         }
@@ -273,7 +270,6 @@ const ServiceDetailsPage: React.FC = () => {
   return (
     <div className="p-6 bg-[#f8fafc] h-full overflow-y-auto font-sans">
       
-      {/* HEADER */}
       <div className="max-w-7xl mx-auto mb-6 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
         <div className="flex items-center gap-4">
           <button onClick={() => navigate('/servicos')} className="p-2 bg-gray-50 hover:bg-gray-100 rounded-xl transition-all cursor-pointer"><ArrowLeft size={22}/></button>
@@ -503,7 +499,7 @@ const ServiceDetailsPage: React.FC = () => {
                 <div key={item.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl bg-white hover:bg-gray-50 transition-all no-print">
                   <div>
                     <span className="font-bold text-gray-800 text-sm italic">
-                      {allParts.find(p => p.id === item.peca)?.nome}
+                      {item.peca_nome || allParts.find(p => p.id === item.peca)?.nome || `PEÇA #${item.peca}`}
                     </span>
                     <p className="text-[10px] font-bold text-gray-400 uppercase">
                       {item.quantidade_utilizada} unidade(s)
@@ -582,7 +578,6 @@ const ServiceDetailsPage: React.FC = () => {
         </div>
       </div>
 
-      {/* MODAL DE PAGAMENTO (ESTILO PDV) */}
       {showPagamento && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-[999] flex items-center justify-center p-4">
           <div className="bg-[#1a1a1a] w-full max-w-lg rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl">

@@ -8,7 +8,6 @@ import logo from '../assets/logo.png';
 import abelha from '../assets/abelha.png';
 import { Eye, EyeOff, UserPlus, Key } from 'lucide-react'; 
 
-// Importação dos Componentes (Modais)
 import ContactModal from '../components/ContactModal'; 
 import SuccessModal from '../components/SuccessModal'; 
 import EsqueciSenha from '../components/EsqueciSenha';
@@ -34,7 +33,6 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
   
   const navigate = useNavigate();
 
-  // Carrega apenas o E-mail se o "Lembrar de mim" estava ativo
   useEffect(() => {
     const savedUsername = localStorage.getItem('remembered_username');
     const savedRemember = localStorage.getItem('remember_me') === 'true';
@@ -51,11 +49,11 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
     try {
       await login(username, password);
 
-      // Lógica de Persistência Apenas para o Login
+  
       if (rememberMe) {
         localStorage.setItem('remembered_username', username);
         localStorage.setItem('remember_me', 'true');
-        // A senha NÃO é salva aqui por segurança
+    
       } else {
         localStorage.removeItem('remembered_username');
         localStorage.setItem('remember_me', 'false');
@@ -90,7 +88,6 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
   return (
     <div className="flex min-h-screen relative">
       
-      {/* 1. Lado Esquerdo: Imagem da Abelha */}
       <div className="hidden lg:flex lg:w-[65%] bg-white relative overflow-hidden">
         <img 
           src={abelha} 
@@ -107,23 +104,21 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
         />
       </div>
 
-      {/* 2. Lado Direito: Formulário de Login */}
 <div className="w-full lg:w-[35%] flex items-center justify-center bg-black p-8">
   <div className="p-10 rounded-2xl shadow-2xl max-w-md w-full flex flex-col items-center">
     
-    {/* LOGO: Aumentada usando style para garantir que o CSS não bloqueie o tamanho */}
+    
   <img 
   src={logo} 
   alt="Logo" 
   style={{
-    width: '280px', // Aumentei ainda mais para garantir
+    width: '280px',
     height: 'auto',
-    marginBottom: '-10px' // Use valor negativo se quiser "colar" no Bem-vindo
+    marginBottom: '-10px' 
   }}
-  className="object-contain" // Remova a classe "logo" daqui se houver
+  className="object-contain"
 />
     
-    {/* TÍTULO: Agora centralizado para alinhar com a logo maior */}
     <h2 className="text-3xl font-bold mb-8 text-left text-amber-500 w-full">
       Bem-vindo
     </h2>

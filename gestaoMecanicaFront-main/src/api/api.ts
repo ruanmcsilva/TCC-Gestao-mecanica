@@ -1,8 +1,6 @@
 import axios from 'axios';
 
 
-//Criar uma estancia do axios
-
 const api = axios.create({
     baseURL: 'http://localhost:8000/api/v1/',
     headers: {
@@ -11,7 +9,7 @@ const api = axios.create({
 });
 
 
-// Interceptor para adicionar o token de autenticação a todas as requisições
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('access_token');
@@ -26,7 +24,6 @@ api.interceptors.request.use(
 );
 
 
-//Funcao para fazer login
 export const login = async (username, password) => {
   const response = await api.post('token/', {
     username,
@@ -37,13 +34,12 @@ export const login = async (username, password) => {
   return response.data;
 };
 
-//Funcao para fazer logout
+
 export const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
 }
 
-//Funcao para buscar os dados do usuario logado
 export const getUserData = async () => {
   const response = await api.get('sessao/');
   return response.data
