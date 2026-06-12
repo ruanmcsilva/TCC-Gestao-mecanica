@@ -62,6 +62,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'mecanica.wsgi.application'
 
+import dj_database_url
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -72,6 +74,10 @@ DATABASES = {
         'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
+
+# Se a variável DATABASE_URL existir (como no Render), sobrescreve as configs acima
+if os.getenv('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(default=os.getenv('DATABASE_URL'), conn_max_age=600)
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
