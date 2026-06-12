@@ -1,6 +1,6 @@
-// O IP que o seu celular (Wi-Fi) usa para falar com o seu Dell (Cabo)
+// O IP do servidor de produção no Render
 import axios from 'axios';
-const baseURL = 'http://192.168.0.123:8000/api/v1';
+const baseURL = 'https://api-mecanica.onrender.com/api/v1';
 
 const api = axios.create({
   baseURL,
