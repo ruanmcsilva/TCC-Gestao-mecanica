@@ -24,6 +24,7 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false);
 
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [isSuccessOpen, setIsSuccessOpen] = useState(false);
@@ -46,6 +47,7 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
   const handleLogin = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+    setIsLoading(true);
     try {
       await login(username, password);
 
@@ -67,6 +69,8 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
       } else {
         setError('Erro ao conectar com o servidor. Tente novamente mais tarde.');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -192,9 +196,18 @@ function LoginPage({ setIsAuthenticated }: LoginPageProps) {
 
             <button
               type="submit"
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-md text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500"
+              disabled={isLoading}
+              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-md text-sm font-bold text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 ${isLoading ? 'bg-amber-400 cursor-not-allowed' : 'bg-amber-500 hover:bg-amber-600'}`}
             >
-              Entrar
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Conectando...
+                </div>
+              ) : 'Entrar'}
             </button>
 
             <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-800 w-full gap-2">
