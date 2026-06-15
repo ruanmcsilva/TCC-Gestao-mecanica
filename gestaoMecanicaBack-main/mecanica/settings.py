@@ -1,9 +1,22 @@
 from pathlib import Path
 from datetime import timedelta
 import os
-FOCUSNFE_TOKEN = os.getenv("FOCUSNFE_TOKEN", "token_de_teste_caso_nao_haja_env")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carregar arquivo .env manualmente para garantir que as credenciais de email sejam carregadas
+env_path = BASE_DIR.parent / '.env'
+if env_path.exists():
+    with open(env_path) as f:
+        for line in f:
+            if line.strip() and not line.startswith('#'):
+                try:
+                    key, value = line.strip().split('=', 1)
+                    os.environ.setdefault(key.strip(), value.strip())
+                except ValueError:
+                    pass
+
+FOCUSNFE_TOKEN = os.getenv("FOCUSNFE_TOKEN", "token_de_teste_caso_nao_haja_env")
 
 # Security Settings
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-key')

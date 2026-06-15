@@ -100,10 +100,11 @@ class SolicitacaoAcessoView(APIView):
                 message=mensagem,
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=['ruanmcs2@gmail.com'],
-                fail_silently=True,
+                fail_silently=False,
             )
         except Exception as e:
             print(f"Erro no email: {e}")
+            return Response({"error": f"Erro ao enviar email: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         return Response({"message": "Solicitação enviada com sucesso"}, status=status.HTTP_200_OK)
 
@@ -133,6 +134,7 @@ class AutorizarAcessoView(APIView):
             )
         except Exception as e:
             print(f"Erro no email: {e}")
+            return Response({"error": f"Erro ao enviar email: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             
         return Response({"message": f"Convite autorizado como {nivel_acesso} com sucesso!"}, status=status.HTTP_200_OK)
 
@@ -209,10 +211,11 @@ def password_reset_token_created(sender, instance, reset_password_token, *args, 
             message=mensagem,
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[reset_password_token.user.email],
-            fail_silently=True
+            fail_silently=False
         )
     except Exception as e:
         print(f"Erro no envio do email de recuperação de senha: {e}")
+        raise e
 
 
 
