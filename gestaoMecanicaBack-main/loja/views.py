@@ -120,15 +120,16 @@ class AutorizarAcessoView(APIView):
         convite.nivel_acesso = nivel_acesso
         convite.save()
 
-        link_cadastro = f"http://localhost:5173/cadastro-token?token={convite.token}&email={convite.email}"
+        origin = request.META.get('HTTP_ORIGIN', 'http://localhost:5173')
+        link_cadastro = f"{origin}/cadastro-token?token={convite.token}&email={convite.email}"
 
         try:
             send_mail(
-                "Acesso Autorizado! - Gestão Mecânica",
-                f"Olá! Seu acesso foi liberado como {nivel_acesso.capitalize()}.\nClique no link para criar sua conta:\n{link_cadastro}",
-                settings.EMAIL_HOST_USER,
-                [convite.email],
-                fail_silently=True,
+                subject="Acesso Autorizado! - Gestão Mecânica",
+                message=f"Olá! Seu acesso foi liberado como {nivel_acesso.capitalize()}.\nClique no link para criar sua conta:\n{link_cadastro}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[convite.email],
+                fail_silently=False,
             )
         except Exception as e:
             print(f"Erro no email: {e}")

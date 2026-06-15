@@ -174,6 +174,13 @@ const CadastroTokenScreen: React.FC = () => {
             {loading ? 'Criando Conta...' : 'Finalizar Cadastro'}
           </button>
         </form>
+        
+        <button
+          onClick={() => navigate('/login')}
+          className="mt-6 text-sm text-gray-500 hover:text-amber-500 font-medium transition-colors"
+        >
+          Voltar para a tela inicial
+        </button>
       </div>
     </div>
   );
