@@ -125,8 +125,12 @@ export default function LoginScreen(props: LoginProps) {
       await fetchUser();
       navigation.replace('AppHome' as any); 
     } catch (error: any) {
-      console.error(error);
-      Alert.alert("Erro de Login", "Não foi possível conectar ao servidor.");
+      console.log("Erro no login:", error.message);
+      if (error.response && error.response.status === 401) {
+        Alert.alert("Erro de Login", "Usuário ou senha incorretos.");
+      } else {
+        Alert.alert("Erro de Login", "Não foi possível conectar ao servidor.");
+      }
     } finally {
       setLoading(false);
     }

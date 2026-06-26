@@ -4,13 +4,14 @@ import {
   Alert, ActivityIndicator, Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Save, Plus, Camera, Trash2, Wrench, User, Bike, Package } from 'lucide-react-native';
+import { ArrowLeft, Save, Plus, Camera, Trash2, Wrench, User, Bike, Package, Search } from 'lucide-react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../config/api';
 
 export default function NewServiceScreen({ navigation, route }: any) { 
   const [loading, setLoading] = useState(false);
+  const [isSearchingPlaca, setIsSearchingPlaca] = useState(false);
   const [allParts, setAllParts] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
@@ -83,6 +84,34 @@ export default function NewServiceScreen({ navigation, route }: any) {
       } catch (err) {
         console.log('CPF test', err);
       }
+    }
+  };
+
+  const handlePlacaSearch = async () => {
+    if (!formData.placa) {
+      Alert.alert('Atenção', 'Digite a placa antes de buscar.');
+      return;
+    }
+    setIsSearchingPlaca(true);
+    setLoading(true);
+    try {
+      const response = await api.get(`/consulta/placa/${formData.placa}/`);
+      const data = response.data;
+      if (data && data.status === 'API Placas') {
+        setFormData(prev => ({
+          ...prev,
+          marca: data.marca || prev.marca,
+          modelo: data.modelo || prev.modelo,
+          ano: data.anoModelo ? String(data.anoModelo) : (data.ano ? String(data.ano) : prev.ano),
+        }));
+      } else {
+        Alert.alert('Atenção', 'Modo simulação ativo ou veículo não encontrado.');
+      }
+    } catch (err) {
+      Alert.alert('Erro', 'Erro ao buscar placa na API.');
+    } finally {
+      setLoading(false);
+      setIsSearchingPlaca(false);
     }
   };
 
@@ -258,7 +287,12 @@ export default function NewServiceScreen({ navigation, route }: any) {
             <TextInput style={[styles.input, { flex: 1 }]} placeholder="Modelo *" value={formData.modelo} onChangeText={(t) => handleInputChange('modelo', t)} />
           </View>
           <View style={styles.row}>
-            <TextInput style={[styles.input, styles.placaInput, { flex: 1, marginRight: 10 }]} placeholder="PLACA *" value={formData.placa} onChangeText={(t) => handleInputChange('placa', t)} autoCapitalize="characters" />
+            <View style={[styles.input, { flex: 1, marginRight: 10, padding: 0, flexDirection: 'row', alignItems: 'center', overflow: 'hidden' }]}>
+              <TextInput style={[styles.placaInput, { flex: 1, padding: 15, height: '100%' }]} placeholder="PLACA *" value={formData.placa} onChangeText={(t) => handleInputChange('placa', t)} autoCapitalize="characters" />
+              <TouchableOpacity onPress={handlePlacaSearch} disabled={isSearchingPlaca} style={{ padding: 12, backgroundColor: isSearchingPlaca ? '#f9731680' : '#F97316', justifyContent: 'center', alignItems: 'center' }}>
+                {isSearchingPlaca ? <ActivityIndicator size="small" color="white" /> : <Search color="white" size={20} />}
+              </TouchableOpacity>
+            </View>
             <TextInput style={[styles.input, { flex: 1 }]} placeholder="Ano" value={formData.ano} onChangeText={(t) => handleInputChange('ano', t)} keyboardType="numeric" />
           </View>
         </View>

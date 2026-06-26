@@ -100,7 +100,7 @@ const ReportsPage: React.FC = () => {
   return (
     <div className="p-6 h-full overflow-y-auto font-sans flex flex-col">
 
-      <div className="flex bg-white w-fit p-1 rounded-xl shadow-sm border border-gray-200 mb-8 no-print shrink-0">
+      <div className="flex bg-white w-fit p-1 rounded-xl shadow-sm border border-gray-200 mb-8 print:hidden shrink-0">
         <button
           onClick={() => setActiveTab('relatorio')}
           className={`flex items-center gap-2 px-6 py-2 rounded-lg text-xs font-black uppercase transition-all cursor-pointer ${activeTab === 'relatorio' ? 'bg-orange-500 text-white' : 'text-gray-400 hover:bg-gray-50'
@@ -131,7 +131,7 @@ const ReportsPage: React.FC = () => {
             <h1 className="text-2xl font-black text-gray-800 uppercase italic flex items-center gap-3 tracking-tighter">
               Análise Inteligente <TrendingUp className="text-orange-500" />
             </h1>
-            <div className="flex bg-white border rounded-lg p-1 shadow-sm no-print">
+            <div className="flex bg-white border rounded-lg p-1 shadow-sm print:hidden">
               {['dia', 'quinzena', 'mes', 'trimestral', '6meses', 'ano'].map((p) => (
                 <button
                   key={p}
@@ -149,25 +149,42 @@ const ReportsPage: React.FC = () => {
             <p className="text-center py-20 text-gray-400 font-black uppercase animate-pulse">Processando com Pandas...</p>
           ) : dashData && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-xl border-l-4 border-blue-500 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="bg-white p-4 rounded-xl border-l-4 border-blue-500 shadow-sm">
                   <p className="text-[10px] font-black text-gray-400 uppercase">Faturamento Total</p>
                   <p className="text-2xl font-black text-gray-900">R$ {dashData.kpis.faturamento_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl border-l-4 border-green-500 shadow-sm">
+                <div className="bg-white p-4 rounded-xl border-l-4 border-green-500 shadow-sm">
                   <p className="text-[10px] font-black text-gray-400 uppercase">Lucro Estimado</p>
                   <p className="text-2xl font-black text-green-600">R$ {dashData.kpis.lucro_estimado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl border-l-4 border-orange-500 shadow-sm">
+                <div className="bg-white p-4 rounded-xl border-l-4 border-orange-500 shadow-sm">
                   <p className="text-[10px] font-black text-gray-400 uppercase">Ticket Médio</p>
                   <p className="text-2xl font-black text-gray-900">R$ {dashData.kpis.ticket_medio.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-6 italic tracking-widest">Evolução do Faturamento</h3>
-                  <div className="h-72">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-2 italic tracking-widest">Métodos de Pagamento</h3>
+                  <div className="h-54">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={dashData.pagamentos} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="valor_total_calculado" nameKey="metodo_pagto">
+                          {dashData.pagamentos.map((_: any, index: number) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                        <Legend verticalAlign="bottom" iconType="circle" />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-2 italic tracking-widest">Evolução do Faturamento</h3>
+                  <div className="h-54">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={dashData.timeline}>
                         <defs><linearGradient id="colorF" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#f97316" stopOpacity={0.1} /><stop offset="95%" stopColor="#f97316" stopOpacity={0} /></linearGradient></defs>
@@ -181,9 +198,10 @@ const ReportsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-6 italic tracking-widest">Peças: Custo vs Venda</h3>
-                  <div className="h-72">
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-2 italic tracking-widest">Peças: Custo vs Venda</h3>
+                  <div className="h-54">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dashData.timeline}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -198,9 +216,10 @@ const ReportsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-6 italic tracking-widest">Desempenho por Mecânico</h3>
-                  <div className="h-72">
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-2 italic tracking-widest">Desempenho por Mecânico</h3>
+                  <div className="h-54">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dashData.funcionarios} layout="vertical">
                         <XAxis type="number" hide />
@@ -216,24 +235,8 @@ const ReportsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase mb-6 italic tracking-widest">Métodos de Pagamento</h3>
-                  <div className="h-72">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={dashData.pagamentos} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="valor_total_calculado" nameKey="metodo_pagto">
-                          {dashData.pagamentos.map((_: any, index: number) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip />
-                        <Legend verticalAlign="bottom" iconType="circle" />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
               </div>
-              <div className="mt-8 flex justify-end no-print">
+              <div className="mt-4 flex justify-end print:hidden">
                 <button onClick={() => window.print()} className="bg-gray-800 text-white px-8 py-3 rounded-xl font-black uppercase text-xs hover:bg-black transition-all flex items-center gap-2 shadow-lg cursor-pointer">
                   <Printer size={16} /> Imprimir Dashboard
                 </button>
@@ -318,7 +321,7 @@ const ReportsPage: React.FC = () => {
                 <p className="text-lg font-black text-gray-900 uppercase text-sm">Faturamento Bruto: <span className="text-2xl ml-2">R$ {formatCurrency(report.total_receita_bruta)}</span></p>
               </div>
 
-              <div className="mt-8 flex justify-end no-print">
+              <div className="mt-8 flex justify-end print:hidden">
                 <button onClick={() => window.print()} className="bg-gray-800 text-white px-6 py-2 rounded-lg font-bold hover:bg-black transition-all flex items-center gap-2 uppercase text-xs shadow-lg cursor-pointer">
                   Gerar PDF / Imprimir
                 </button>
@@ -331,9 +334,9 @@ const ReportsPage: React.FC = () => {
           )}
         </>
       ) : (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden w-[100%] mx-auto">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden w-[100%] mx-auto print:overflow-visible print:border-none">
 
-          <div className="overflow-y-auto max-h-[650px] custom-scrollbar">
+          <div className="overflow-y-auto max-h-[650px] custom-scrollbar print:overflow-visible print:max-h-none">
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
                 <tr className="text-[10px] font-black text-gray-400 uppercase tracking-widest">

@@ -16,6 +16,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import Select from 'react-select';
+import { generatePixPayload } from '../utils/pix';
 
 const VendaBalcao: React.FC = () => {
   const LOW_STOCK_LIMIT = 5;
@@ -32,6 +33,8 @@ const VendaBalcao: React.FC = () => {
   const [metodoPagamento, setMetodoPagamento] = useState('PIX');
   const [parcelas, setParcelas] = useState(1);
   const [vendaSucesso, setVendaSucesso] = useState(false);
+
+  const pixKey = 'b9d06bed-a343-4c04-9cb1-67b50cac0c6e';
 
   useEffect(() => {
     api.get('/pecas/?page_size=1000').then(res => setAllParts(res.data.results));
@@ -93,6 +96,13 @@ const VendaBalcao: React.FC = () => {
   const subtotalGeral = selectedParts.reduce((acc, curr) => acc + (curr.preco * curr.quantidade), 0);
   const totalComDesconto = Math.max(0, subtotalGeral - descontoValor);
 
+  const qrCodePix = React.useMemo(() => {
+    if (totalComDesconto > 0) {
+      return generatePixPayload(pixKey, 'MECANICA', 'SAO PAULO', totalComDesconto, `VD${Date.now()}`);
+    }
+    return '';
+  }, [totalComDesconto]);
+
   const handleDescontoValor = (valor: number) => {
     setDescontoValor(valor);
     setDescontoPerc(subtotalGeral > 0 ? (valor / subtotalGeral) * 100 : 0);
@@ -153,12 +163,12 @@ const VendaBalcao: React.FC = () => {
       const vendaRes = await api.post('/vendas/emitir-nota/', dadosVenda);
 
       setVendaSucesso(true);
-      showNotification('Venda autorizada na SEFAZ!', 'success');
+      showNotification('Venda finalizada com sucesso!', 'success');
 
       setTimeout(() => {
-        if (vendaRes.data.url_danfe) {
-          window.open(vendaRes.data.url_danfe, '_blank');
-        }
+        // if (vendaRes.data.url_danfe) {
+        //   window.open(vendaRes.data.url_danfe, '_blank');
+        // }
 
         setSelectedParts([]);
         setShowPagamento(false);
@@ -355,7 +365,20 @@ const VendaBalcao: React.FC = () => {
                 </div>
 
                 <div className="bg-white/5 p-6 rounded-3xl min-h-[160px] flex flex-col justify-center border border-white/5">
-                  {metodoPagamento === 'PIX' && <div className="text-center"><QrCode size={100} className="mx-auto opacity-20 text-white" /><p className="text-[9px] mt-2 text-gray-500 font-black uppercase">Aguardando...</p></div>}
+                  {metodoPagamento === 'PIX' && (
+                    <div className="text-center">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrCodePix)}&bgcolor=1a1a1a&color=f97316`} 
+                        alt="QR Code PIX" 
+                        className="mx-auto rounded-xl p-2 bg-black border border-white/10 shadow-lg"
+                      />
+                      <div className="bg-orange-500/10 p-3 rounded-xl border border-orange-500/20 mt-4 cursor-pointer hover:bg-orange-500/20 transition-all" onClick={() => { navigator.clipboard.writeText(qrCodePix); showNotification('Pix Copia e Cola copiado!', 'success'); }}>
+                        <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest leading-relaxed text-center">
+                          Clique aqui para copiar o PIX COPIA E COLA
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   {metodoPagamento === 'CARTÃO' && (
                     <select value={parcelas} onChange={(e) => setParcelas(Number(e.target.value))} className="w-full p-4 bg-black rounded-xl border border-white/10 text-white font-bold outline-none">
                       {[1, 2, 3, 6, 12].map(n => <option key={n} value={n}>{n}x de R$ {(totalComDesconto / n).toFixed(2)}</option>)}
@@ -364,7 +387,7 @@ const VendaBalcao: React.FC = () => {
                 </div>
 
                 <button onClick={confirmarVendaFinal} className="w-full p-6 bg-white text-black font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-orange-500 shadow-xl transition-all">
-                  {loading ? "PROCESSANDO..." : "Finalizar e Emitir Nota"}
+                  {loading ? "PROCESSANDO..." : "Finalizar Venda"}
                 </button>
               </div>
             ) : (

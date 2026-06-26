@@ -438,30 +438,43 @@ def consulta_api_externa(request, tipo, valor):
     
     if tipo == 'placa':
         placa_limpa = str(valor).strip().upper().replace('-', '')
-        url = f"https://brasilapi.com.br/api/fipe/veiculos/v1/{placa_limpa}"
+        token = getattr(settings, 'API_PLACAS_TOKEN', None)
+        
+        if not token:
+            return Response({"error": "API_PLACAS_TOKEN não configurado no servidor."}, status=500)
+            
+        url = f"https://wdapi2.com.br/consulta/{placa_limpa}/{token}"
         
         try:
-            response = requests.get(url, timeout=4)
+            response = requests.get(url, timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                veiculo = data[0] if isinstance(data, list) else data
-                return Response({
-                    "placa": placa_limpa,
-                    "modelo": veiculo.get('modelo'),
-                    "marca": veiculo.get('marca'),
-                    "cor": "Preta (Base)",
-                    "status": "API Real"
-                }, status=200)
+                if "MARCA" in data or "MODELO" in data:
+                    return Response({
+                        "placa": placa_limpa,
+                        "modelo": data.get('MODELO') or data.get('modelo'),
+                        "marca": data.get('MARCA') or data.get('marca'),
+                        "ano": data.get('ano'),
+                        "anoModelo": data.get('anoModelo'),
+                        "cor": data.get('cor', 'Preta (Base)'),
+                        "cidade": data.get('municipio'),
+                        "estado": data.get('uf'),
+                        "chassi": data.get('chassi'),
+                        "situacao": data.get('situacao'),
+                        "status": "API Placas"
+                    }, status=200)
             
-            raise Exception("Fallback necessário")
+            raise Exception("Falha na API Placas ou veículo não encontrado")
 
-        except Exception:
+        except Exception as e:
+            # Fallback
             return Response({
                 "placa": placa_limpa,
                 "modelo": "Honda CG 160 Titan (Simulação)",
                 "marca": "Honda",
                 "cor": "Azul Metálico",
                 "status": "Modo de Demonstração",
+                "erro": str(e)
             }, status=200)
 
     valor_limpo = ''.join(filter(str.isdigit, str(valor)))
@@ -871,9 +884,14 @@ def upload_nf_view(request):
 
             dados_json = json.loads(texto)
             
+            payload_banco = dados_json
+            servico_id = request.data.get('servico_id')
+            if servico_id:
+                payload_banco = {"itens": dados_json, "servico_id": servico_id}
+
             NotaFiscalPendente.objects.create(
                 usuario=request.user,
-                dados_extraidos=dados_json
+                dados_extraidos=payload_banco
             )
             return Response({"message": "Nota fiscal processada com sucesso. Acesse o computador para continuar."}, status=200)
         else:
@@ -886,12 +904,42 @@ def upload_nf_view(request):
 def nf_pendentes_view(request):
     pendente = NotaFiscalPendente.objects.filter(usuario=request.user).order_by('-criado_em').first()
     if pendente:
+        dados = pendente.dados_extraidos
+        itens = dados.get('itens', dados) if isinstance(dados, dict) else dados
+        servico_id = dados.get('servico_id') if isinstance(dados, dict) else None
+
+        cliente_nome = None
+        moto_modelo = None
+        if servico_id:
+            try:
+                from .models import Servico
+                servico = Servico.objects.get(id=servico_id)
+                if servico.cliente:
+                    cliente_nome = servico.cliente.nome
+                if servico.moto:
+                    moto_modelo = f"{servico.moto.modelo} ({servico.moto.placa})"
+            except:
+                pass
+
         return Response({
+            "has_pendente": True,
             "id": pendente.id,
-            "itens": pendente.dados_extraidos,
+            "itens": itens,
+            "servico_id": servico_id,
+            "cliente_nome": cliente_nome,
+            "moto_modelo": moto_modelo,
             "criado_em": pendente.criado_em
         }, status=200)
-    return Response({"message": "Nenhuma nota pendente"}, status=404)
+    return Response({"has_pendente": False, "message": "Nenhuma nota pendente"}, status=200)
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def descartar_nf_view(request, pk):
+    try:
+        NotaFiscalPendente.objects.get(id=pk, usuario=request.user).delete()
+        return Response(status=204)
+    except:
+        return Response(status=404)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -949,3 +997,52 @@ def confirmar_nf_view(request):
         print(f"DEBUG: erro geral: {e}")
         return Response({"error": str(e)}, status=500)
 
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ocr_placa_view(request):
+    import requests
+    imagem_base64 = request.data.get('imagem')
+    if not imagem_base64:
+        return Response({"error": "Imagem não enviada"}, status=400)
+    
+    if imagem_base64.startswith('data:image'):
+        imagem_base64 = imagem_base64.split(',')[1]
+
+    contexto = (
+        "Você é um leitor de placas de veículos. "
+        "Analise a imagem e identifique a placa do veículo (Mercosul ou modelo antigo). "
+        "Retorne APENAS o texto da placa, sem traços, sem espaços e sem nenhum texto adicional. "
+        "Se não conseguir identificar, retorne a palavra ERRO"
+    )
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{settings.GEMINI_MODEL}:generateContent?key={settings.GEMINI_API_KEY}"
+        payload = {
+            "contents": [{
+                "parts": [
+                    {"text": contexto},
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": imagem_base64
+                        }
+                    }
+                ]
+            }],
+            "generationConfig": {"temperature": 0.1}
+        }
+        
+        response = requests.post(url, json=payload, timeout=20)
+        if response.status_code == 200:
+            data = response.json()
+            texto = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+            
+            if not texto or "ERRO" in texto.upper():
+                return Response({"error": "Não foi possível ler a placa na imagem. Tente focar melhor ou digitar manualmente."}, status=400)
+                
+            placa_limpa = texto.replace("-", "").replace(" ", "").upper()
+            return Response({"placa": placa_limpa}, status=200)
+        else:
+            return Response({"error": "Erro ao processar imagem na IA", "details": response.text}, status=500)
+    except Exception as e:
+        return Response({"error": str(e)}, status=500)

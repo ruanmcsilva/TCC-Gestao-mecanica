@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TextInput, TouchableOpacity, ScrollView, Image, Alert, ActivityIndicator, Linking, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Save, Plus, Camera, Printer, CreditCard } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
@@ -7,6 +7,8 @@ import api from '../config/api';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Picker } from '@react-native-picker/picker';
+import { generatePixPayload } from '../utils/pix';
 
 export default function ServiceDetailsScreen({ route, navigation }: any) {
 
@@ -18,7 +20,16 @@ export default function ServiceDetailsScreen({ route, navigation }: any) {
   const [service, setService] = useState<any>(initialService || null);
   const [parts, setParts] = useState<any[]>([]);
   const [photos, setPhotos] = useState<any[]>([]);
+  const [paymentModalVisible, setPaymentModalVisible] = useState(false);
+  const [pixModalVisible, setPixModalVisible] = useState(false);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
   
+  const [addPartModalVisible, setAddPartModalVisible] = useState(false);
+  const [availableParts, setAvailableParts] = useState<any[]>([]);
+  const [selectedPartId, setSelectedPartId] = useState<string>('');
+  const [partQty, setPartQty] = useState('1');
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [description, setDescription] = useState(initialService?.descricao || '');
   const [laborCost, setLaborCost] = useState(initialService?.valor_mao_de_obra?.toString() || '0');
   const [status, setStatus] = useState(initialService?.status || 'PENDENTE');
@@ -187,6 +198,78 @@ const handlePrint = async () => {
   }
 };
 
+  const handlePaymentOptions = () => {
+    setPaymentModalVisible(true);
+  };
+
+  const confirmPayment = (metodo: string) => {
+    Alert.alert("Confirmar", `Finalizar OS e marcar como pago via ${metodo}?`, [
+      { text: "Sim", onPress: async () => {
+          setLoading(true);
+          setPaymentModalVisible(false);
+          setPixModalVisible(false);
+          try {
+            await api.post(`/pagamentos/servico/${service.id}/marcar-pago/`, { metodo });
+            Alert.alert("Sucesso", "Pagamento registrado e OS finalizada!");
+            fetchServiceData();
+          } catch (err: any) {
+            Alert.alert("Erro", err.response?.data?.message || "Erro ao confirmar pagamento.");
+          } finally {
+            setLoading(false);
+          }
+      }},
+      { text: "Não", style: "cancel" }
+    ]);
+  };
+
+  const handleGeneratePix = () => {
+    if (!service?.valor_total_servico) return;
+    const pixKey = 'b9d06bed-a343-4c04-9cb1-67b50cac0c6e';
+    const payload = generatePixPayload(pixKey, 'MECANICA', 'SAO PAULO', service.valor_total_servico, `OS${service.id}`);
+    const url = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(payload)}&bgcolor=ffffff&color=000000`;
+    setQrCodeUrl(url);
+    setPaymentModalVisible(false);
+    setPixModalVisible(true);
+  };
+
+  const openAddPartModal = async () => {
+    setAddPartModalVisible(true);
+    try {
+      const res = await api.get('/pecas/?page_size=1000');
+      const partsList = res.data.results || res.data || [];
+      setAvailableParts(partsList);
+      if (partsList.length > 0) {
+        setSelectedPartId(partsList[0].id.toString());
+      }
+    } catch (err) {
+      console.log('Erro ao carregar pecas', err);
+    }
+  };
+
+  const handleAddManualPart = async () => {
+    if (!selectedPartId || !partQty) {
+      Alert.alert('Aviso', 'Selecione a peça e informe a quantidade.');
+      return;
+    }
+    try {
+      setLoading(true);
+      await api.post('/itens-servico/', {
+        servico: service.id,
+        peca: parseInt(selectedPartId),
+        quantidade_utilizada: parseInt(partQty),
+      });
+      setAddPartModalVisible(false);
+      Alert.alert('Sucesso', 'Peça adicionada à OS.');
+      fetchServiceData();
+    } catch (err) {
+      Alert.alert('Erro', 'Não foi possível adicionar a peça.');
+      setLoading(false);
+    }
+  };
+
+
+
+
   if (loading) return <ActivityIndicator size="large" color="#EE6B22" style={{ flex: 1 }} />;
 
   return (
@@ -260,9 +343,14 @@ const handlePrint = async () => {
             <View style={styles.section}>
               <View style={styles.rowJustified}>
                 <Text style={styles.sectionTitle}>Peças Utilizadas</Text>
-                <TouchableOpacity style={styles.smallBtn}>
-                  <Plus size={16} color="#F97316" />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <TouchableOpacity style={styles.smallBtn} onPress={openAddPartModal}>
+                    <Plus size={16} color="#F97316" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.smallBtn} onPress={() => navigation.navigate('ScannerNf', { servicoId: service?.id })}>
+                    <Camera size={16} color="#F97316" />
+                  </TouchableOpacity>
+                </View>
               </View>
               {parts.map((item) => (
                 <View key={item.id} style={styles.partItem}>
@@ -299,12 +387,110 @@ const handlePrint = async () => {
         </TouchableOpacity>
 
         {service?.id && status !== 'CONCLUIDO' && (
-          <TouchableOpacity style={styles.payButton} onPress={() => Alert.alert("Pagamento", "Deseja finalizar e emitir nota?")}>
+          <TouchableOpacity style={styles.payButton} onPress={handlePaymentOptions}>
             <CreditCard color="white" size={20} />
-            <Text style={styles.saveButtonText}>FINALIZAR E PAGAR</Text>
+            <Text style={styles.saveButtonText}>RECEBER PAGAMENTO</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      <Modal visible={paymentModalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Como o cliente pagou?</Text>
+            
+            <TouchableOpacity style={[styles.payOptionBtn, { backgroundColor: '#10B981' }]} onPress={handleGeneratePix}>
+              <Text style={styles.payOptionText}>PIX (Gerar QR Code)</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.payOptionBtn, { backgroundColor: '#F59E0B' }]} onPress={() => confirmPayment('DINHEIRO')}>
+              <Text style={styles.payOptionText}>Dinheiro em Espécie</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.payOptionBtn} onPress={() => confirmPayment('CARTÃO CRÉDITO')}>
+              <Text style={styles.payOptionText}>Cartão de Crédito (Maquininha)</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.payOptionBtn} onPress={() => confirmPayment('CARTÃO DÉBITO')}>
+              <Text style={styles.payOptionText}>Cartão de Débito (Maquininha)</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.payOptionBtn, { backgroundColor: '#EF4444', marginTop: 10 }]} onPress={() => setPaymentModalVisible(false)}>
+              <Text style={styles.payOptionText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={pixModalVisible} transparent={true} animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { alignItems: 'center' }]}>
+            <Text style={styles.modalTitle}>QR Code Pix</Text>
+            <Text style={{ textAlign: 'center', marginBottom: 20, color: '#64748b' }}>Mostre esta tela para o cliente escanear o QR Code no app do banco.</Text>
+            
+            {qrCodeUrl ? (
+              <View style={{ padding: 15, backgroundColor: 'white', borderRadius: 20, elevation: 5, marginBottom: 30 }}>
+                <Image source={{ uri: qrCodeUrl }} style={{ width: 250, height: 250 }} />
+              </View>
+            ) : null}
+
+            <TouchableOpacity style={[styles.payOptionBtn, { backgroundColor: '#16A34A', width: '100%' }]} onPress={() => confirmPayment('PIX')}>
+              <Text style={styles.payOptionText}>Confirmar Pagamento Realizado</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.payOptionBtn, { backgroundColor: '#EF4444', width: '100%', marginTop: 5 }]} onPress={() => setPixModalVisible(false)}>
+              <Text style={styles.payOptionText}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={addPartModalVisible} transparent={true} animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Adicionar Peça (Estoque)</Text>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f1f5f9', borderRadius: 10, paddingHorizontal: 15, marginBottom: 15 }}>
+              <TextInput 
+                style={{ flex: 1, paddingVertical: 12, color: '#1e293b' }}
+                placeholder="🔍 Buscar peça pelo nome..."
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+            
+            <View style={{ borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, marginBottom: 15, backgroundColor: '#f8fafc' }}>
+              <Picker
+                selectedValue={selectedPartId}
+                onValueChange={(itemValue) => setSelectedPartId(itemValue)}
+              >
+                {availableParts
+                  .filter(p => p.nome.toLowerCase().includes(searchQuery.toLowerCase()))
+                  .map((p) => (
+                    <Picker.Item key={p.id} label={`${p.nome} (Estoque: ${p.quantidade_em_estoque})`} value={p.id.toString()} />
+                  ))
+                }
+              </Picker>
+            </View>
+
+            <Text style={styles.label}>Quantidade</Text>
+            <TextInput 
+              style={styles.input} 
+              value={partQty} 
+              onChangeText={setPartQty} 
+              keyboardType="numeric" 
+            />
+
+            <TouchableOpacity style={[styles.payOptionBtn, { backgroundColor: '#EE6B22' }]} onPress={handleAddManualPart}>
+              <Text style={styles.payOptionText}>Adicionar Peça Manual</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={[styles.payOptionBtn, { backgroundColor: '#EF4444', marginTop: 10 }]} onPress={() => setAddPartModalVisible(false)}>
+              <Text style={styles.payOptionText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -344,5 +530,12 @@ const styles = StyleSheet.create({
   saveButton: { backgroundColor: '#EE6B22', flexDirection: 'row', height: 60, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   payButton: { backgroundColor: '#16A34A', flexDirection: 'row', height: 60, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 10 },
   saveButtonText: { color: 'white', fontWeight: '900', marginLeft: 10, fontSize: 16 },
-  smallBtn: { backgroundColor: '#fff7ed', padding: 8, borderRadius: 10 }
+  smallBtn: { backgroundColor: '#fff7ed', padding: 8, borderRadius: 10 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 25, paddingBottom: 40 },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: '#111827', marginBottom: 20, textAlign: 'center' },
+  payOptionBtn: { backgroundColor: '#111827', padding: 16, borderRadius: 12, marginBottom: 12, alignItems: 'center' },
+  payOptionText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
+  payOptionBtnSecondary: { backgroundColor: '#F3F4F6', padding: 16, borderRadius: 12, marginBottom: 12, alignItems: 'center', borderWidth: 1, borderColor: '#D1D5DB' },
+  payOptionTextSecondary: { color: '#111827', fontWeight: 'bold', fontSize: 16 }
 });

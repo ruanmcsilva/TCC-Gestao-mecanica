@@ -39,8 +39,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const response = await api.get('/auth/user/');
       setUser(response.data);
-    } catch (error) {
-      console.error("Erro ao buscar usuário no AuthContext:", error);
+    } catch (error: any) {
+      if (error.response && error.response.status === 401) {
+        console.log("Token expirado ou inválido. Usuário precisa fazer login novamente.");
+      } else {
+        console.error("Erro ao buscar usuário no AuthContext:", error);
+      }
       setUser(null);
     } finally {
       setIsLoading(false);

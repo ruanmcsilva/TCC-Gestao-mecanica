@@ -5,6 +5,7 @@ import { AlertCircle, Calendar } from 'lucide-react';
 import Sidebar from './Sidebar';
 import AIChatWidget from './AIChatWidget';
 import { NfPendenteModal } from './NfPendenteModal';
+
 import api from '../api/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -45,16 +46,16 @@ const Layout: React.FC<LayoutProps> = ({ children, setIsAuthenticated }) => {
   useEffect(() => {
     fetchData();
     fetchUsuario();
-    const interval = setInterval(fetchData, 30000);
+    const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
   }, [isAdmin]);
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden print:h-auto print:overflow-visible print:bg-white">
       <Sidebar setIsAuthenticated={setIsAuthenticated} />
 
       <div className="flex flex-col flex-grow">
-        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 sticky top-0 z-30">
+        <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-8 sticky top-0 z-30 print:hidden">
 
           <div className="text-gray-600 font-medium">
             Funcionário: <span className="text-black font-bold">{funcionarioNome}</span>
@@ -104,13 +105,14 @@ const Layout: React.FC<LayoutProps> = ({ children, setIsAuthenticated }) => {
           </div>
         </header>
 
-        <main className="flex-grow p-4 md:p-6 md:pb-2 overflow-hidden flex flex-col">
+        <main className="flex-grow p-4 md:p-6 md:pb-2 overflow-hidden flex flex-col print:overflow-visible print:p-0">
           {children}
         </main>
         
-        <NfPendenteModal />
+
         
       </div>
+      <NfPendenteModal />
     </div>
   );
 };

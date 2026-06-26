@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/api';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
-import { Save, X, User, Bike, Wrench, Package, Camera, Trash2 } from 'lucide-react';
+import { Save, X, User, Bike, Wrench, Package, Camera, Trash2, Search } from 'lucide-react';
 import Select from 'react-select'; 
 
 const NewServiceIntegrated: React.FC = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState(false);
+  const [isSearchingPlaca, setIsSearchingPlaca] = useState(false);
   const [allParts, setAllParts] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
@@ -90,6 +91,34 @@ const NewServiceIntegrated: React.FC = () => {
       } catch (err) {
         showNotification('CPF não encontrado.', 'info');
       }
+    }
+  };
+
+  const handlePlacaSearch = async () => {
+    if (!formData.placa) {
+      showNotification('Digite a placa antes de buscar.', 'error');
+      return;
+    }
+    setIsSearchingPlaca(true);
+    showNotification('Buscando placa...', 'info');
+    try {
+      const response = await api.get(`/consulta/placa/${formData.placa}/`);
+      const data = response.data;
+      if (data && data.status === 'API Placas') {
+        setFormData(prev => ({
+          ...prev,
+          marca: data.marca || prev.marca,
+          modelo: data.modelo || prev.modelo,
+          ano: data.anoModelo || data.ano || prev.ano,
+        }));
+        showNotification('Dados do veículo preenchidos!', 'success');
+      } else {
+        showNotification('Modo simulação ativo ou veículo não encontrado.', 'info');
+      }
+    } catch (err) {
+      showNotification('Erro ao buscar placa na API.', 'error');
+    } finally {
+      setIsSearchingPlaca(false);
     }
   };
 
@@ -209,7 +238,14 @@ const NewServiceIntegrated: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <input type="text" name="marca" placeholder="Marca (Ex: Honda)" value={formData.marca} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
                 <input type="text" name="modelo" placeholder="Modelo (Ex: Biz)" value={formData.modelo} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" required />
-                <input type="text" name="placa" placeholder="PLACA" value={formData.placa} onChange={handleInputChange} className="p-4 bg-gray-900 text-white border-none rounded-2xl font-black text-center uppercase text-xl" required />
+                
+                <div className="flex relative">
+                  <input type="text" name="placa" placeholder="PLACA" value={formData.placa} onChange={handleInputChange} className="w-full p-4 bg-gray-900 text-white border-none rounded-2xl font-black text-center uppercase text-xl pr-14" required />
+                  <button type="button" onClick={handlePlacaSearch} disabled={isSearchingPlaca} className={`absolute right-2 top-2 bottom-2 ${isSearchingPlaca ? 'bg-orange-400 cursor-not-allowed' : 'bg-orange-600 hover:bg-orange-700'} text-white rounded-xl px-3 flex items-center justify-center transition-colors shadow-sm`} title="Buscar dados da placa na API">
+                    {isSearchingPlaca ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <Search size={20} />}
+                  </button>
+                </div>
+                
                 <input type="number" name="ano" placeholder="Ano" value={formData.ano} onChange={handleInputChange} className="p-4 bg-gray-50 border-none rounded-2xl font-bold outline-none" />
               </div>
             </div>

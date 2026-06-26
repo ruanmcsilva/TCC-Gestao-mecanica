@@ -15,10 +15,8 @@ export const NfPendenteModal: React.FC = () => {
       
       try {
         const response = await api.get('/pecas/nf-pendentes/');
-        if (response.data && response.data.id) {
+        if (response.data && response.data.has_pendente) {
           setPendente(response.data);
-          // O Gemini pode retornar itens com formato ligeiramente variado,
-          // Vamos mapear garantindo que tenha nome_peca, valor_unitario e preco_venda
           const rawItens = response.data.itens || [];
           const formatItens = rawItens.map((it: any) => ({
             ...it,
@@ -27,11 +25,11 @@ export const NfPendenteModal: React.FC = () => {
           setItens(formatItens);
         }
       } catch (err: any) {
-        // Ignora erro 404 (Nenhuma nota pendente)
+        console.log("Aguardando nota fiscal...");
       }
     };
 
-    const interval = setInterval(checkPendentes, 5000);
+    const interval = setInterval(checkPendentes, 30000);
     return () => clearInterval(interval);
   }, [pendente]);
 
@@ -39,6 +37,16 @@ export const NfPendenteModal: React.FC = () => {
     const newItens = [...itens];
     newItens[index].preco_venda = value;
     setItens(newItens);
+  };
+
+  const handleDiscard = async () => {
+    try {
+      await api.delete(`/pecas/nf-pendentes/${pendente.id}/`);
+      setPendente(null);
+      setItens([]);
+    } catch (err) {
+      showNotification('Erro ao descartar nota.', 'error');
+    }
   };
 
   const handleConfirm = async () => {
@@ -57,18 +65,19 @@ export const NfPendenteModal: React.FC = () => {
       }));
 
       const match = window.location.pathname.match(/\/servicos\/(\d+)/);
-      const servicoId = match ? match[1] : null;
+      const urlServicoId = match ? match[1] : null;
+      const finalServicoId = pendente?.servico_id || urlServicoId;
 
       await api.post('/pecas/confirmar-nf/', {
         pendente_id: pendente.id,
         itens: formattedItens,
-        servico_id: servicoId
+        servico_id: finalServicoId
       });
       
       showNotification('Peças cadastradas com sucesso!', 'success');
       setPendente(null);
       setItens([]);
-      if (servicoId) {
+      if (finalServicoId) {
         window.location.reload();
       }
     } catch (err) {
@@ -80,6 +89,10 @@ export const NfPendenteModal: React.FC = () => {
 
   if (!pendente) return null;
 
+  const match = window.location.pathname.match(/\/servicos\/(\d+)/);
+  const urlServicoId = match ? match[1] : null;
+  const displayServicoId = pendente?.servico_id || urlServicoId;
+
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -87,13 +100,15 @@ export const NfPendenteModal: React.FC = () => {
           <h2 className="text-xl font-bold text-gray-800">Nota Fiscal Digitalizada Recebida!</h2>
           <p className="text-sm text-gray-600 mt-1">A IA extraiu as peças abaixo da sua foto. Preencha o preço de venda para concluir.</p>
           
-          {window.location.pathname.match(/\/servicos\/(\d+)/) && (
+          {displayServicoId && (
             <div className="absolute top-6 right-6 bg-green-100 text-green-800 px-3 py-1 rounded-full text-xs font-bold border border-green-200 flex items-center gap-1 shadow-sm">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
               </span>
-              VINCULANDO À OS #{window.location.pathname.match(/\/servicos\/(\d+)/)?.[1]}
+              VINCULANDO À OS #{displayServicoId}
+              {pendente?.cliente_nome && <span className="ml-2 border-l border-green-300 pl-2 font-normal truncate max-w-[200px]">{pendente.cliente_nome}</span>}
+              {pendente?.moto_modelo && <span className="ml-2 text-[10px] bg-green-200 px-2 py-0.5 rounded-full text-green-800">{pendente.moto_modelo}</span>}
             </div>
           )}
         </div>
@@ -144,22 +159,30 @@ export const NfPendenteModal: React.FC = () => {
           )}
         </div>
         
-        <div className="p-6 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
+        <div className="p-6 border-t border-gray-200 flex justify-between items-center bg-gray-50">
           <button 
-            onClick={() => setPendente(null)}
-            className="px-6 py-2.5 rounded-lg font-semibold text-gray-600 hover:bg-gray-200 transition-colors"
+            onClick={handleDiscard}
+            className="px-4 py-2.5 rounded-lg font-semibold text-red-600 hover:bg-red-50 transition-colors"
           >
-            Ignorar por enquanto
+            Excluir (Descartar)
           </button>
-          <button 
-            onClick={handleConfirm}
-            disabled={isSubmitting || itens.length === 0}
-            className={`px-6 py-2.5 rounded-lg font-bold text-white transition-colors ${
-              isSubmitting || itens.length === 0 ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'
-            }`}
-          >
-            {isSubmitting ? 'Salvando...' : 'Salvar Peças no Sistema'}
-          </button>
+          <div className="flex gap-3">
+            <button 
+              onClick={() => setPendente(null)}
+              className="px-6 py-2.5 rounded-lg font-semibold text-gray-600 hover:bg-gray-200 transition-colors"
+            >
+              Minimizar
+            </button>
+            <button 
+              onClick={handleConfirm}
+              disabled={isSubmitting || itens.length === 0}
+              className={`px-6 py-2.5 rounded-lg font-bold text-white transition-colors ${
+                isSubmitting || itens.length === 0 ? 'bg-orange-300 cursor-not-allowed' : 'bg-orange-500 hover:bg-orange-600'
+              }`}
+            >
+              {isSubmitting ? 'Salvando...' : 'Salvar Peças no Sistema'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

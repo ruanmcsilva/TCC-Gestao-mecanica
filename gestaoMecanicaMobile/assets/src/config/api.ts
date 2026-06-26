@@ -1,6 +1,6 @@
 // O IP do servidor de produção no Render
 import axios from 'axios';
-const baseURL = 'https://api-mecanica.onrender.com/api/v1';
+const baseURL = 'http://192.168.0.162:8000/api/v1';
 
 const api = axios.create({
   baseURL,

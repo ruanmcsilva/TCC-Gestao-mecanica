@@ -10,8 +10,10 @@ from .views import (
     contar_convites_pendentes, SolicitacaoAcessoView,
     AutorizarAcessoView, listar_convites, DashboardAnaliticoView, AgendamentoViewSet,
     RegistrarComTokenView, consultar_ai, FuncionarioViewSet,
-    upload_nf_view, nf_pendentes_view, confirmar_nf_view
+    upload_nf_view, nf_pendentes_view, confirmar_nf_view, descartar_nf_view,
+    ocr_placa_view
 )
+from .pagamento_views import marcar_pago_maquininha
 
 router = DefaultRouter()
 router.register(r'fornecedores', FornecedorViewSet)
@@ -46,8 +48,14 @@ urlpatterns = [
     path('dashboard-analitico/', DashboardAnaliticoView.as_view(), name='dashboard-analitico'),
   
     path('ai/consultar/', consultar_ai, name='consultar_ai'),
+    path('ai/ocr-placa/', ocr_placa_view, name='ocr_placa'),
     path('pecas/upload-nf/', upload_nf_view, name='upload_nf'),
     path('pecas/nf-pendentes/', nf_pendentes_view, name='nf_pendentes'),
+    path('pecas/nf-pendentes/<int:pk>/', descartar_nf_view, name='descartar_nf'),
     path('pecas/confirmar-nf/', confirmar_nf_view, name='confirmar_nf'),
+    
+    # Pagamentos
+    path('pagamentos/servico/<int:pk>/marcar-pago/', marcar_pago_maquininha, name='marcar_pago'),
+    
     path('', include(router.urls)),
 ]

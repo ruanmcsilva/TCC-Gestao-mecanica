@@ -48,7 +48,7 @@ const Sidebar: React.FC<SidebarProps> = ({ setIsAuthenticated }) => {
   const baseClass = "flex items-center py-2 px-4 rounded transition duration-200 mb-2";
 
   return (
-    <nav className="w-64 h-screen bg-black text-white flex flex-col flex-shrink-0 border-r border-black sticky top-0 shadow-xl">
+    <nav className="w-64 h-screen bg-black text-white flex flex-col flex-shrink-0 border-r border-black sticky top-0 shadow-xl print:hidden">
       <div className="p-4">
         <div className='flex justify-center mb-6 mt-4 flex-shrink-0'>
           <img src={logo} alt="Logo" className='w-32 h-auto object-contain'/>

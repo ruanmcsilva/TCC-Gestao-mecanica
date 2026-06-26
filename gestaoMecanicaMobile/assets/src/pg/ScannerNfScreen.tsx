@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Camera as CameraIcon, Check, X, Zap, ZapOff } from 'lucide-react-native';
 import api from '../config/api';
 
-export default function ScannerNfScreen({ navigation }: any) {
+export default function ScannerNfScreen({ navigation, route }: any) {
   const [permission, requestPermission] = useCameraPermissions();
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
@@ -47,7 +47,8 @@ export default function ScannerNfScreen({ navigation }: any) {
     if (!photoBase64) return;
     setLoading(true);
     try {
-      await api.post('/pecas/upload-nf/', { imagem: photoBase64 });
+      const servicoId = route.params?.servicoId;
+      await api.post('/pecas/upload-nf/', { imagem: photoBase64, servico_id: servicoId });
       Alert.alert(
         'Sucesso!',
         'Nota fiscal processada. Acesse o computador (painel web) para confirmar os preços e salvar as peças.',

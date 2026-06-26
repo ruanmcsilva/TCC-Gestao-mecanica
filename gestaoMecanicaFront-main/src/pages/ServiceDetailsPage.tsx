@@ -5,9 +5,10 @@ import { useNotification } from '../contexts/NotificationContext';
 import { 
   ArrowLeft, Printer, Edit, Trash2, Plus, 
   Package, Camera, FileText, User, Calendar, X, Clock, CheckCircle, Search, CreditCard,
-  QrCode, Banknote, Smartphone
+  QrCode, Banknote
 } from 'lucide-react';
 import Select from 'react-select';
+import { generatePixPayload } from '../utils/pix';
 
 const ServiceDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,7 +31,6 @@ const ServiceDetailsPage: React.FC = () => {
   
   const [showPagamento, setShowPagamento] = useState(false);
   const [metodoPagamento, setMetodoPagamento] = useState('PIX');
-  const [parcelas, setParcelas] = useState(1);
   const [vendaSucesso, setVendaSucesso] = useState(false);
 
   const [newPart, setNewPart] = useState({ 
@@ -205,41 +205,54 @@ const ServiceDetailsPage: React.FC = () => {
     } catch { showNotification('Erro ao gerar PDF.', 'error'); }
   };
 
-  const finalizarPagamentoOS = async () => {
+  const handleGerarCobranca = async () => {
     setLoading(true);
     try {
-      const response = await api.post('/vendas/emitir-nota/', {
-        venda_id: id,
-        pagamento: metodoPagamento
-      });
-
-      if (response.status === 201 || response.status === 200) {
-        const urlDanfe = response.data.url_danfe;
-        const whatsappLink = response.data.whatsapp_link; // Captura o link do Zap
-        
-        setVendaSucesso(true);
-        showNotification('Pagamento confirmado!', 'success');
-        
-        if (urlDanfe) {
-           window.open(urlDanfe, '_blank');
-        }
-
-        if (whatsappLink) {
-          window.open(whatsappLink, '_blank');
-        }
-
-        setTimeout(async () => {
-          await fetchDetails(); 
-          setShowPagamento(false);
-          setVendaSucesso(false);
-        }, 1500);
-      }
-    } catch (err) {
-      showNotification('Erro ao processar pagamento.', 'error');
+      const response = await api.post(`/pagamentos/servico/${id}/gerar/`);
+      setLinkPagamento(response.data.link_pagamento);
+      showNotification('Cobrança gerada com sucesso!', 'success');
+      await fetchDetails();
+    } catch (err: any) {
+      showNotification(err.response?.data?.message || 'Erro ao gerar cobrança.', 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleMarcarPago = async (metodo: string) => {
+    setLoading(true);
+    try {
+      await api.post(`/pagamentos/servico/${id}/marcar-pago/`, { metodo });
+      showNotification('Pagamento confirmado na maquininha!', 'success');
+      setVendaSucesso(true);
+      setTimeout(async () => {
+        await fetchDetails(); 
+        setShowPagamento(false);
+        setVendaSucesso(false);
+      }, 1500);
+    } catch (err: any) {
+      showNotification(err.response?.data?.message || 'Erro ao confirmar pagamento.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const pixKey = 'b9d06bed-a343-4c04-9cb1-67b50cac0c6e';
+  const qrCodePix = React.useMemo(() => {
+    if (service && service.valor_total_servico > 0) {
+      return generatePixPayload(pixKey, 'MECANICA', 'SAO PAULO', Number(service.valor_total_servico), `OS${id}`);
+    }
+    return '';
+  }, [service, id]);
+
+  const enviarWhatsAppPix = () => {
+    if (!qrCodePix) return;
+    const msg = `Olá! Segue o Pix Copia e Cola para pagamento do serviço na moto ${moto?.placa}: \n\n${qrCodePix}`;
+    const wappUrl = `https://wa.me/${client?.telefone?.replace(/\D/g, '') || ''}?text=${encodeURIComponent(msg)}`;
+    window.open(wappUrl, '_blank');
+  };
+
+
 
   const handleUploadPhoto = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -496,7 +509,7 @@ const ServiceDetailsPage: React.FC = () => {
 
             <div className="space-y-2">
               {serviceParts.map(item => (
-                <div key={item.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl bg-white hover:bg-gray-50 transition-all no-print">
+                <div key={item.id} className="flex justify-between items-center p-3 border border-gray-100 rounded-xl bg-white hover:bg-gray-50 transition-all print:hidden">
                   <div>
                     <span className="font-bold text-gray-800 text-sm italic">
                       {item.peca_nome || allParts.find(p => p.id === item.peca)?.nome || `PEÇA #${item.peca}`}
@@ -590,59 +603,50 @@ const ServiceDetailsPage: React.FC = () => {
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    {id: 'PIX', i: <QrCode size={18}/>}, 
-                    {id: 'CARTÃO', i: <CreditCard size={18}/>}, 
-                    {id: 'DÉBITO', i: <Smartphone size={18}/>}, 
-                    {id: 'DINHEIRO', i: <Banknote size={18}/>}
+                    {id: 'PIX', label: 'Pix', i: <QrCode size={18}/>}, 
+                    {id: 'DINHEIRO', label: 'Dinheiro', i: <Banknote size={18}/>},
+                    {id: 'CARTÃO CRÉDITO', label: 'Crédito', i: <CreditCard size={18}/>},
+                    {id: 'CARTÃO DÉBITO', label: 'Débito', i: <CreditCard size={18}/>}
                   ].map(m => (
                     <button
                       key={m.id}
                       onClick={() => setMetodoPagamento(m.id)}
-                      className={`p-5 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 border-2 transition-all cursor-pointer ${
+                      className={`p-4 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 border-2 transition-all cursor-pointer ${
                         metodoPagamento === m.id ? 'border-orange-500 bg-orange-500 text-black shadow-lg shadow-orange-500/20' : 'border-white/5 text-gray-500 bg-white/5'
                       }`}
                     >
-                      {m.i} {m.id}
+                      {m.i} {m.label}
                     </button>
                   ))}
                 </div>
 
-                <div className="bg-white/5 p-6 rounded-3xl min-h-[160px] flex flex-col justify-center items-center border border-white/5 transition-all">
+                <div className="bg-white/5 p-6 rounded-3xl min-h-[160px] flex flex-col justify-center items-center border border-white/5 transition-all text-center">
                   {metodoPagamento === 'PIX' && (
-                    <div className="text-center animate-in fade-in zoom-in duration-300">
-                      <QrCode size={120} className="mx-auto text-white opacity-80" />
-                      <p className="text-[10px] mt-4 text-orange-500 font-black uppercase tracking-widest animate-pulse">Aguardando confirmação do PIX...</p>
-                    </div>
-                  )}
-
-                  {metodoPagamento === 'CARTÃO' && (
-                    <div className="w-full space-y-4 animate-in slide-in-from-bottom-4 duration-300">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Escolha o Parcelamento</label>
-                      <select 
-                        value={parcelas} 
-                        onChange={(e) => setParcelas(Number(e.target.value))} 
-                        className="w-full p-4 bg-black rounded-xl border border-white/10 text-white font-bold outline-none focus:border-orange-500"
+                    <div className="w-full space-y-4 animate-in fade-in zoom-in duration-300">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(qrCodePix)}&bgcolor=1a1a1a&color=f97316`} 
+                        alt="QR Code PIX" 
+                        className="mx-auto rounded-xl p-2 bg-black border border-white/10 shadow-lg"
+                      />
+                      <div className="bg-orange-500/10 p-3 rounded-xl border border-orange-500/20 mt-2 cursor-pointer hover:bg-orange-500/20 transition-all" onClick={() => { navigator.clipboard.writeText(qrCodePix); showNotification('Pix Copia e Cola copiado!', 'success'); }}>
+                        <p className="text-[10px] text-orange-400 font-black uppercase tracking-widest leading-relaxed text-center">
+                          Clique aqui para copiar o PIX COPIA E COLA
+                        </p>
+                      </div>
+                      
+                      <button 
+                        onClick={enviarWhatsAppPix}
+                        className="w-full mt-4 p-4 bg-[#25D366] text-white font-black rounded-xl uppercase tracking-widest shadow-lg shadow-[#25D366]/20 hover:bg-[#1ebd5a] transition-all cursor-pointer"
                       >
-                        {[1, 2, 3, 6, 12].map(n => (
-                          <option key={n} value={n}>
-                            {n}x de R$ {(Number(service?.valor_total_servico) / n).toFixed(2)}
-                          </option>
-                        ))}
-                      </select>
+                        Enviar Pix no WhatsApp
+                      </button>
                     </div>
                   )}
 
-                  {metodoPagamento === 'DÉBITO' && (
+                  {metodoPagamento !== 'PIX' && (
                     <div className="text-center animate-in zoom-in duration-300">
-                      <Smartphone size={60} className="mx-auto text-white opacity-40 mb-3" />
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Insira ou aproxime o cartão na maquininha</p>
-                    </div>
-                  )}
-
-                  {metodoPagamento === 'DINHEIRO' && (
-                    <div className="text-center animate-in zoom-in duration-300">
-                      <Banknote size={60} className="mx-auto text-white opacity-40 mb-3" />
-                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Receba o valor em espécie e confirme abaixo</p>
+                      <CheckCircle size={60} className="mx-auto text-white opacity-40 mb-3" />
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Confirmar pagamento via {metodoPagamento}?</p>
                     </div>
                   )}
                 </div>
@@ -653,11 +657,11 @@ const ServiceDetailsPage: React.FC = () => {
                 </div>
 
                 <button 
-                  onClick={finalizarPagamentoOS} 
+                  onClick={() => handleMarcarPago(metodoPagamento)} 
                   disabled={loading}
                   className="w-full p-6 bg-white text-black font-black rounded-2xl uppercase tracking-[0.2em] hover:bg-orange-500 hover:text-white shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
-                  {loading ? "SINCRO..." : "Finalizar e Concluir OS"}
+                  {loading ? "SINCRO..." : "Confirmar Recebimento"}
                 </button>
               </div>
             ) : (
